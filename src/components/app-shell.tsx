@@ -101,8 +101,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className="font-semibold text-white">{user.username}</span>
                   <span className="rounded bg-blue-600/30 px-1.5 text-xs text-blue-200">Lv {user.level}</span>
                 </Link>
-                <Button variant="ghost" size="icon" className="hidden md:inline-flex" onClick={logout} aria-label="Log out">
-                  <LogOut />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="hidden md:inline-flex"
+                  render={<Link href="/settings" />}
+                  nativeButton={false}
+                  aria-label="Settings"
+                  title="Settings and log out"
+                >
+                  <Settings />
                 </Button>
                 <Button variant="ghost" size="icon" className="xl:hidden" onClick={() => setOpen((o) => !o)} aria-label="Menu" aria-expanded={open}>
                   {open ? <X /> : <Menu />}
