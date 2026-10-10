@@ -3,7 +3,6 @@
 import { motion } from "motion/react";
 import { Coins, Gem, Star, Sparkles, TrendingUp, TrendingDown } from "lucide-react";
 import type { MatchConfig } from "@/game/types";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export interface ResultStat {

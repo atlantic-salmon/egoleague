@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "./api";
 import type { ClientMsg, ServerMsg } from "@/shared/protocol";
 import type { SnapFeed } from "@/components/game/match-view";
@@ -67,15 +67,15 @@ export class GameSocket {
 }
 
 export function useGameSocket(enabled: boolean) {
-  const ref = useRef<GameSocket | null>(null);
   const [status, setStatus] = useState<GameSocket["status"]>("connecting");
   const [sock, setSock] = useState<GameSocket | null>(null);
   useEffect(() => {
     if (!enabled) return;
     const s = new GameSocket();
-    s.onStatus = setStatus;
-    ref.current = s;
-    setSock(s);
+    s.onStatus = (st) => {
+      setStatus(st);
+      setSock(s);
+    };
     void s.connect();
     return () => s.close();
   }, [enabled]);

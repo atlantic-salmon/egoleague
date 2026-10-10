@@ -28,7 +28,7 @@ export function useOnline() {
   const { socket, status } = useGameSocket(!!user);
   const feed = useSnapFeed(socket);
   const [lobby, setLobby] = useState<LobbyView | null>(null);
-  const [queue, setQueue] = useState<{ status: "idle" | "searching"; waiting: number }>({ status: "idle", waiting: 0 });
+  const [queue, setQueue] = useState<{ status: "idle" | "searching"; waiting: number; since: number }>({ status: "idle", waiting: 0, since: 0 });
   const [match, setMatch] = useState<OnlineMatchInfo | null>(null);
   const [end, setEnd] = useState<OnlineEnd | null>(null);
 
@@ -48,13 +48,13 @@ export function useOnline() {
           toast.error(m.msg);
           break;
         case "queue":
-          setQueue({ status: m.status, waiting: m.waiting });
+          setQueue((q) => ({ status: m.status, waiting: m.waiting, since: m.status === "searching" && q.status !== "searching" ? Date.now() : q.since }));
           break;
         case "match.start":
           current = { matchId: m.matchId, config: m.config, you: m.you, mode: m.mode };
           setEnd(null);
           setMatch(current);
-          setQueue({ status: "idle", waiting: 0 });
+          setQueue({ status: "idle", waiting: 0, since: 0 });
           break;
         case "match.end":
           if (current) setEnd({ score: m.score, side: m.side, reward: m.reward, mode: m.mode, config: current.config });

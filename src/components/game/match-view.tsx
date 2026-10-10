@@ -6,7 +6,8 @@ import { Maximize2, Pause, Play, Volume2, VolumeX } from "lucide-react";
 import { createMatch, DT, step, stateFromSnapshot, TICK_RATE, type Snapshot } from "@/game/engine";
 import { applyEvents, createFx, render, HUMAN_COLORS } from "@/game/render";
 import { KeyboardInput, CONTROL_HELP, type Scheme } from "@/game/input";
-import { playEvents, sfxEnabled } from "@/game/sfx";
+import { playEvents } from "@/game/sfx";
+import { usePref } from "@/lib/prefs";
 import type { MatchConfig, MatchEvent, MatchState } from "@/game/types";
 import { TouchControls } from "./touch-controls";
 import { Button } from "@/components/ui/button";
@@ -20,18 +21,9 @@ interface Banner {
 }
 
 function useSettings() {
-  const [shake, setShake] = useState(true);
-  const [sound, setSound] = useState(true);
-  useEffect(() => {
-    setShake(localStorage.getItem("bl_shake") !== "off");
-    setSound(sfxEnabled());
-  }, []);
-  const toggleSound = () => {
-    const next = !sound;
-    localStorage.setItem("bl_sound", next ? "on" : "off");
-    setSound(next);
-  };
-  return { shake, sound, toggleSound };
+  const [shake] = usePref("bl_shake");
+  const [sound, setSound] = usePref("bl_sound");
+  return { shake, sound, toggleSound: () => setSound(!sound) };
 }
 
 function fmtClock(clockTicks: number, durationSec: number) {

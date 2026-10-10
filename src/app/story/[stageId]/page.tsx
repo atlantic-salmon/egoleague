@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
 import { ArrowLeft, Film, Loader2, ShieldCheck, Swords, Users, Gift } from "lucide-react";
@@ -23,6 +23,7 @@ import { STAGE_BY_ID, CHAPTERS, objectiveText } from "@/shared/story";
 import { VARIANT_BY_ID, CHARACTER_BY_ID, variantName } from "@/shared/catalog";
 import type { Rarity } from "@/shared/rarity";
 import { cn } from "@/lib/utils";
+import { defaultTeamId } from "@/lib/teams";
 
 type Phase = "brief" | "before" | "starting" | "play" | "submitting" | "after" | "result";
 
@@ -42,7 +43,8 @@ function Stage({ stageId }: { stageId: string }) {
   const { setUser } = useSession();
   const teams = useApi<{ teams: TeamView[] }>("/teams");
   const progress = useApi<{ stages: { id: string; stars: number; unlocked: boolean; cleared: boolean }[] }>("/story");
-  const [teamId, setTeamId] = useState<number | null>(null);
+  const [pickedTeam, setTeamId] = useState<number | null>(null);
+  const teamId = pickedTeam ?? defaultTeamId(teams.data?.teams);
   const [phase, setPhase] = useState<Phase>("brief");
   const [config, setConfig] = useState<MatchConfig | null>(null);
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -50,10 +52,6 @@ function Stage({ stageId }: { stageId: string }) {
   const [result, setResult] = useState<SubmitResult | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const schemes = useMemo<Scheme[]>(() => ["solo"], []);
-
-  useEffect(() => {
-    if (teamId === null && teams.data?.teams.length) setTeamId((teams.data.teams.find((t) => t.isDefault) ?? teams.data.teams[0]).id);
-  }, [teams.data, teamId]);
 
   if (!stage) return <Empty title="That stage doesn't exist">Head back to Isagi&apos;s path and pick a stage.</Empty>;
   const status = progress.data?.stages.find((s) => s.id === stageId);

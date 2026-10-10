@@ -13,21 +13,20 @@ import { useOnline } from "@/lib/use-online";
 import { useApi } from "@/lib/use-api";
 import { useSession } from "@/lib/session";
 import type { TeamView } from "@/lib/types";
+import { defaultTeamId } from "@/lib/teams";
 
 function Ranked() {
   const { user } = useSession();
   const { socket, status, feed, queue, match, end, clearEnd } = useOnline();
   const teams = useApi<{ teams: TeamView[] }>("/teams");
-  const [teamId, setTeamId] = useState<number | null>(null);
-  const [elapsed, setElapsed] = useState(0);
+  const [pickedTeam, setTeamId] = useState<number | null>(null);
+  const teamId = pickedTeam ?? defaultTeamId(teams.data?.teams);
+  const [now, setNow] = useState(() => Date.now());
+  const elapsed = queue.status === "searching" ? Math.max(0, Math.floor((now - queue.since) / 1000)) : 0;
 
   useEffect(() => {
-    if (teamId === null && teams.data?.teams.length) setTeamId((teams.data.teams.find((t) => t.isDefault) ?? teams.data.teams[0]).id);
-  }, [teams.data, teamId]);
-
-  useEffect(() => {
-    if (queue.status !== "searching") return setElapsed(0);
-    const id = setInterval(() => setElapsed((e) => e + 1), 1000);
+    if (queue.status !== "searching") return;
+    const id = setInterval(() => setNow(Date.now()), 500);
     return () => clearInterval(id);
   }, [queue.status]);
 

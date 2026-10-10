@@ -27,8 +27,11 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
   useEffect(() => {
-    void refresh();
-  }, [refresh]);
+    api<{ user: Profile | null }>("/me")
+      .then((r) => setUser(r.user))
+      .catch(() => setUser(null))
+      .finally(() => setLoading(false));
+  }, []);
   return <Ctx.Provider value={{ user, loading, refresh, setUser }}>{children}</Ctx.Provider>;
 }
 

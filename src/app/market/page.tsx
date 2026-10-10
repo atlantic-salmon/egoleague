@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Coins, Search, ShoppingCart, Store, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/auth-card";
@@ -214,14 +214,12 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
   const coll = useApi<{ items: Item[] }>("/collection");
   const cfg = useApi<EconomyCfg>("/config");
   const [itemId, setItemId] = useState<number | null>(preselect);
-  const [price, setPrice] = useState("");
+  const [prices, setPrices] = useState<Record<number, string>>({});
   const [busy, setBusy] = useState(false);
   const items = (coll.data?.items ?? []).filter((i) => !i.locked);
   const item = items.find((i) => i.id === itemId) ?? null;
-
-  useEffect(() => {
-    if (item && !price) setPrice(String(item.value));
-  }, [item, price]);
+  const price = item ? (prices[item.id] ?? String(item.value)) : "";
+  const setPrice = (v: string) => item && setPrices((p) => ({ ...p, [item.id]: v }));
 
   if (coll.loading && !coll.data) return <Loading />;
   if (coll.error || !coll.data) return <ErrorState message={coll.error ?? "Couldn't load items"} onRetry={coll.reload} />;
@@ -238,7 +236,6 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
       setUser(r.user);
       toast.success(`${item.name} listed for ${fmt(p)} coins`);
       setItemId(null);
-      setPrice("");
       await coll.reload();
       onListed();
     } catch (err) {
@@ -256,7 +253,7 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
         ) : (
           <div className="grid max-h-[640px] grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 md:grid-cols-4">
             {items.map((it) => (
-              <ItemCard key={it.id} item={it} compact selected={it.id === itemId} onClick={() => (setItemId(it.id), setPrice(String(it.value)))} />
+              <ItemCard key={it.id} item={it} compact selected={it.id === itemId} onClick={() => setItemId(it.id)} />
             ))}
           </div>
         )}
@@ -344,16 +341,9 @@ function Mine() {
 }
 
 function Market() {
-  const [tab, setTab] = useState<"browse" | "sell" | "mine">("browse");
-  const [preselect, setPreselect] = useState<number | null>(null);
+  const [preselect] = useState<number | null>(() => Number(new URLSearchParams(window.location.search).get("sell")) || null);
+  const [tab, setTab] = useState<"browse" | "sell" | "mine">(preselect ? "sell" : "browse");
   const [mineKey, setMineKey] = useState(0);
-  useEffect(() => {
-    const s = Number(new URLSearchParams(window.location.search).get("sell"));
-    if (s > 0) {
-      setPreselect(s);
-      setTab("sell");
-    }
-  }, []);
   return (
     <div>
       <PageHeader title="Market" kicker="Buy and sell for coins">

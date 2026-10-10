@@ -142,18 +142,13 @@ function Picker({ items, selected, toggle, empty }: { items: Item[]; selected: n
 function Composer({ onSent }: { onSent: () => void }) {
   const { user, setUser } = useSession();
   const mineRes = useApi<{ items: Item[] }>("/collection");
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState(() => new URLSearchParams(window.location.search).get("to") ?? "");
   const [theirs, setTheirs] = useState<{ username: string; items: Item[] } | null>(null);
   const [offer, setOffer] = useState<number[]>([]);
   const [request, setRequest] = useState<number[]>([]);
   const [offerCoins, setOfferCoins] = useState("");
   const [requestCoins, setRequestCoins] = useState("");
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    const to = new URLSearchParams(window.location.search).get("to");
-    if (to) setUsername(to);
-  }, []);
 
   const lookup = async () => {
     if (username.trim().length < 3) return;

@@ -21,6 +21,8 @@ const SLOTS: { slot: GearSlot; label: string }[] = [
   { slot: "jersey", label: "Jersey" },
 ];
 
+type CostInfo = { cost: { coins: number; shards: number }; maxed: boolean; shardsOnDismantle: number };
+
 function StatBars({ item }: { item: CharItem }) {
   return (
     <div className="grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
@@ -59,15 +61,23 @@ export function ItemDetail({
   onChanged: () => void;
 }) {
   const { user, setUser } = useSession();
-  const [cost, setCost] = useState<{ cost: { coins: number; shards: number }; maxed: boolean; shardsOnDismantle: number } | null>(null);
+  const [costState, setCostState] = useState<{ key: string; data: CostInfo } | null>(null);
   const [busy, setBusy] = useState(false);
-  const [confirmDismantle, setConfirmDismantle] = useState(false);
+  const [confirmFor, setConfirmFor] = useState<number | null>(null);
+  const costKey = item ? `${item.id}:${item.level}` : "";
+  const cost = costState?.key === costKey ? costState.data : null;
+  const confirmDismantle = !!item && confirmFor === item.id;
+  const setConfirmDismantle = (v: boolean) => setConfirmFor(v && item ? item.id : null);
 
   useEffect(() => {
-    setCost(null);
-    setConfirmDismantle(false);
     if (!item || !open) return;
-    api<typeof cost>(`/items/${item.id}/cost`).then(setCost).catch(() => setCost(null));
+    let alive = true;
+    api<CostInfo>(`/items/${item.id}/cost`)
+      .then((data) => alive && setCostState({ key: `${item.id}:${item.level}`, data }))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, [item, open]);
 
   if (!item) return null;
@@ -88,12 +98,7 @@ export function ItemDetail({
   };
 
   const levelUp = () =>
-    act(async () => {
-      const res = await api<{ user: Profile }>(`/items/${item.id}/levelup`, { method: "POST", idempotent: true });
-      const c = await api<typeof cost>(`/items/${item.id}/cost`);
-      setCost(c);
-      return res;
-    }, `${item.name} reached level ${item.level + 1}`);
+    act(() => api<{ user: Profile }>(`/items/${item.id}/levelup`, { method: "POST", idempotent: true }), `${item.name} reached level ${item.level + 1}`);
 
   const dismantle = () =>
     act(async () => {

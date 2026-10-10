@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { ChevronRight, FastForward } from "lucide-react";
 import { CUTSCENES, type Backdrop, type CutsceneFrame } from "@/shared/cutscenes";
@@ -8,6 +8,7 @@ import { Portrait } from "./portrait";
 import { Button } from "@/components/ui/button";
 import { uiBlip } from "@/game/sfx";
 import { cn } from "@/lib/utils";
+import { useMediaQuery } from "@/lib/prefs";
 
 const BACKDROPS: Record<Backdrop, string> = {
   void: "radial-gradient(ellipse at center, #0b1530 0%, #02040a 70%)",
@@ -26,18 +27,15 @@ const POS: Record<"left" | "right" | "center", string> = {
 };
 
 function useTypewriter(text: string, speed = 26) {
-  const [n, setN] = useState(0);
+  const [st, setSt] = useState({ text, n: 0 });
+  const reduce = useMediaQuery("(prefers-reduced-motion: reduce)");
+  const n = reduce ? text.length : st.text === text ? st.n : 0;
   useEffect(() => {
-    setN(0);
-    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) {
-      setN(text.length);
-      return;
-    }
-    const id = setInterval(() => setN((v) => (v >= text.length ? v : v + 1)), speed);
+    if (reduce) return;
+    const id = setInterval(() => setSt((p) => (p.text !== text ? { text, n: 1 } : p.n >= text.length ? p : { text, n: p.n + 1 })), speed);
     return () => clearInterval(id);
-  }, [text, speed]);
-  return { shown: text.slice(0, n), done: n >= text.length, finish: () => setN(text.length) };
+  }, [text, speed, reduce]);
+  return { shown: text.slice(0, n), done: n >= text.length, finish: () => setSt({ text, n: text.length }) };
 }
 
 function Fx({ frame }: { frame: CutsceneFrame }) {
@@ -99,14 +97,20 @@ export function Cutscene({ id, onDone }: { id: string; onDone: () => void }) {
   const frame = frames[i];
   const { shown, done, finish } = useTypewriter(frame?.text ?? "");
   const doneRef = useRef(onDone);
-  doneRef.current = onDone;
+  useEffect(() => {
+    doneRef.current = onDone;
+  }, [onDone]);
 
-  const next = useCallback(() => {
+  const next = () => {
     if (!done) return finish();
     uiBlip("tick");
     if (i + 1 >= frames.length) doneRef.current();
     else setI(i + 1);
-  }, [done, finish, i, frames.length]);
+  };
+  const nextRef = useRef(next);
+  useEffect(() => {
+    nextRef.current = next;
+  });
 
   useEffect(() => {
     if (!frames.length) doneRef.current();
@@ -116,12 +120,12 @@ export function Cutscene({ id, onDone }: { id: string; onDone: () => void }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === " " || e.key === "Enter") {
         e.preventDefault();
-        next();
+        nextRef.current();
       } else if (e.key === "Escape") doneRef.current();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [next]);
+  }, []);
 
   if (!frame) return null;
   const shake = frame.fx?.includes("shake");

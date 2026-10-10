@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Crown, Plus, Save, Star, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/auth-card";
@@ -34,13 +34,11 @@ const toDraft = (t: TeamView): Draft => ({ id: t.id, name: t.name, formation: t.
 function Teams() {
   const teams = useApi<{ teams: TeamView[] }>("/teams");
   const coll = useApi<{ items: Item[] }>("/collection");
-  const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftState, setDraft] = useState<Draft | null>(null);
   const [slot, setSlot] = useState(0);
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    if (!draft && teams.data?.teams.length) setDraft(toDraft(teams.data.teams.find((t) => t.isDefault) ?? teams.data.teams[0]));
-  }, [teams.data, draft]);
+  const fallback = teams.data?.teams.find((t) => t.isDefault) ?? teams.data?.teams[0];
+  const draft = draftState ?? (fallback ? toDraft(fallback) : null);
 
   const chars = useMemo(() => (coll.data?.items ?? []).filter((i): i is CharItem => i.kind === "char").sort((a, b) => b.ovr - a.ovr), [coll.data]);
   const byId = useMemo(() => new Map(chars.map((c) => [c.id, c])), [chars]);

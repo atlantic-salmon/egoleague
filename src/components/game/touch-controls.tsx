@@ -1,18 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+import { useMediaQuery } from "@/lib/prefs";
 import { IN } from "@/game/engine";
 
 /** On-screen joystick plus shoot/pass buttons, shown only on touch devices. */
 export function TouchControls({ onBits, color }: { onBits: (bits: number) => void; color: string }) {
-  const [enabled, setEnabled] = useState(false);
+  const enabled = useMediaQuery("(pointer: coarse)");
   const stick = useRef({ id: -1, ox: 0, oy: 0, dx: 0, dy: 0 });
   const buttons = useRef({ shoot: false, pass: false });
   const [knob, setKnob] = useState({ x: 0, y: 0 });
-
-  useEffect(() => {
-    setEnabled(window.matchMedia("(pointer: coarse)").matches);
-  }, []);
 
   const emit = () => {
     const { dx, dy } = stick.current;
