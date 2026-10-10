@@ -75,9 +75,10 @@ export function playEvents(events: MatchEvent[]) {
   }
 }
 
-export function uiBlip(kind: "pull" | "reveal" | "rare" = "pull") {
+export function uiBlip(kind: "pull" | "reveal" | "rare" | "tick" = "pull") {
   if (!sfxEnabled()) return;
-  if (kind === "pull") tone(300, 0.15, "triangle", 0.12, 900);
+  if (kind === "tick") tone(880, 0.04, "sine", 0.05);
+  else if (kind === "pull") tone(300, 0.15, "triangle", 0.12, 900);
   else if (kind === "reveal") tone(660, 0.12, "sine", 0.12);
   else {
     tone(523, 0.2, "square", 0.08);
