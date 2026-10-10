@@ -1,0 +1,90 @@
+{
+  "gacha": {
+    "pullCostGems": 100,
+    "tenPullCostGems": 900,
+    "rates": { "C": 40, "UC": 27, "R": 17, "E": 9.5, "M": 4.5, "L": 1.5, "WC": 0.45, "N1": 0.05 },
+    "pityLegendaryPlus": 70,
+    "pityN1": 500,
+    "featuredShare": 0.5,
+    "rollRanges": {
+      "C": [0, 45],
+      "UC": [8, 55],
+      "R": [18, 65],
+      "E": [28, 75],
+      "M": [38, 85],
+      "L": [50, 92],
+      "WC": [62, 98],
+      "N1": [72, 100]
+    }
+  },
+  "stats": {
+    "rarityPower": { "C": 44, "UC": 51, "R": 58, "E": 65, "M": 72, "L": 79, "WC": 86, "N1": 93 },
+    "talentMin": 0.86,
+    "talentMax": 1.18,
+    "qualityMin": 0.86,
+    "qualityMax": 1.18,
+    "levelCap": { "C": 20, "UC": 25, "R": 30, "E": 35, "M": 40, "L": 45, "WC": 50, "N1": 60 },
+    "levelGrowthMax": 0.55,
+    "levelDecay": 0.93,
+    "gearPoints": { "C": 2, "UC": 3, "R": 5, "E": 7, "M": 9, "L": 12, "WC": 16, "N1": 21 },
+    "setBonusPct": 0.03,
+    "namedSetBonusPct": 0.06,
+    "physics": {
+      "topSpeedBase": 140,
+      "topSpeedPerPoint": 1.65,
+      "accelBase": 55,
+      "accelPerPoint": 2.3,
+      "turnBase": 3.2,
+      "turnPerPoint": 0.065,
+      "shotBase": 380,
+      "shotPerPoint": 5.2,
+      "chargeBase": 0.9,
+      "chargePerPoint": 0.012
+    }
+  },
+  "progression": {
+    "levelUpCoinBase": 40,
+    "levelUpCoinGrowth": 1.17,
+    "levelUpShardBase": 1,
+    "levelUpShardGrowth": 1.11,
+    "shardsFromRarity": { "C": 1, "UC": 2, "R": 4, "E": 8, "M": 16, "L": 35, "WC": 80, "N1": 200 },
+    "accountXpBase": 60,
+    "accountXpGrowth": 1.32,
+    "earlyBoostUntilLevel": 8,
+    "earlyRewardMult": 2.5,
+    "storyTempoEarly": 1.18,
+    "storyTempoLate": 1.0
+  },
+  "economy": {
+    "startingGems": 3000,
+    "startingCoins": 1500,
+    "marketListingFeePct": 2,
+    "marketListingFeeMin": 10,
+    "marketTaxPct": 8,
+    "marketMinPrice": 10,
+    "marketMaxPrice": 50000000,
+    "basePrice": { "C": 20, "UC": 45, "R": 110, "E": 280, "M": 700, "L": 2000, "WC": 8000, "N1": 40000 },
+    "friendlyCoinsPerMatch": 20,
+    "friendlyCoinsPerGoal": 4,
+    "friendlyDailyRewardedMatches": 8,
+    "ghostCoinsWin": 40,
+    "ghostCoinsLoss": 10,
+    "rankedWinCoins": 120,
+    "rankedLossCoins": 35,
+    "rankedWinGems": 15,
+    "storyGoalCoins": 8
+  },
+  "match": {
+    "friendlyDurationSec": 150,
+    "rankedDurationSec": 150,
+    "ghostDurationSec": 120,
+    "eloK": 32,
+    "startRating": 1000
+  },
+  "antiCheat": {
+    "maxTradesPerPairPerDay": 5,
+    "ticketSlackRatio": 0.85,
+    "ticketTtlSec": 1800,
+    "winStreakFlag": 25
+  }
+}
