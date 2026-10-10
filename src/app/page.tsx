@@ -157,7 +157,7 @@ export default function Home() {
             ["Isagi's Path", "Eight stages from the First Selection to the Neo Egoist League, with animated cutscenes."],
             ["Gacha with permanent rolls", "Every pull rolls Talent and Quality from 0 to 100. They can never be changed."],
             ["Two players, one laptop", "WASD vs arrow keys. No account needed for local play."],
-            ["Online lobbies", "Mix friends and bots on either side, or queue for ranked 1v1."],
+            ["Online lobbies", "Mix friends and bots on either side, or queue for ranked 3v3."],
             ["Market and trades", "Sell players for coins or swap directly with friends."],
             ["Cheat-proof", "The server owns your items and replays every match to verify results."],
           ].map(([t, d]) => (

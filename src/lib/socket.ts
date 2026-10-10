@@ -11,7 +11,7 @@ export class GameSocket {
   private ws: WebSocket | null = null;
   private listeners = new Set<Listener>();
   private closed = false;
-  status: "connecting" | "open" | "closed" = "connecting";
+  status: "connecting" | "open" | "closed" | "replaced" = "connecting";
   onStatus?: (s: GameSocket["status"]) => void;
 
   async connect() {
@@ -24,8 +24,9 @@ export class GameSocket {
       const ws = new WebSocket(`${proto}://${location.host}/ws?ticket=${encodeURIComponent(ticket)}`);
       this.ws = ws;
       ws.onopen = () => this.setStatus("open");
-      ws.onclose = () => {
-        this.setStatus("closed");
+      ws.onclose = (e) => {
+        this.setStatus(e.code === 4000 ? "replaced" : "closed");
+        if (e.code === 4000) this.closed = true;
         if (!this.closed) setTimeout(() => void this.connect(), 2000);
       };
       ws.onmessage = (e) => {

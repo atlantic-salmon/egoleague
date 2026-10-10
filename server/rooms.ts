@@ -76,7 +76,7 @@ function send(c: Conn | undefined, m: ServerMsg) {
 }
 
 function lobbyView(l: Lobby): LobbyView {
-  const sv = (s: Slot): LobbySlotView => (s.kind === "human" ? { ...s, online: conns.has(s.userId) } : s);
+  const sv = (s: Slot): LobbySlotView => (s.kind === "human" ? { ...s, online: conns.get(s.userId)?.ws.readyState === WebSocket.OPEN } : s);
   return { code: l.code, hostId: l.hostId, sides: [l.sides[0].map(sv), l.sides[1].map(sv)], settings: l.settings, status: l.status };
 }
 
@@ -576,6 +576,7 @@ function dequeue(userId: number) {
 }
 
 const wss = new WebSocketServer({ noServer: true, maxPayload: 4096 });
+const RECONNECT_GRACE_MS = 10_000;
 
 export function handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer) {
   const url = new URL(req.url ?? "/", "http://localhost");
@@ -608,6 +609,8 @@ export function handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer
     conns.set(user.id, c);
     send(c, { t: "hello", userId: user.id, username: user.username });
     if (c.lobby) broadcastLobby(c.lobby);
+    const h = c.room && !c.room.done ? c.room.humans.get(user.id) : null;
+    if (c.room && h) send(c, { t: "match.start", matchId: c.room.id, config: c.room.cfg, you: h.slot, mode: c.room.mode });
     ws.on("message", (data) => {
       const now = Date.now();
       if (now > c.msgReset) {
@@ -632,10 +635,15 @@ export function handleUpgrade(req: IncomingMessage, socket: Duplex, head: Buffer
     });
     ws.on("close", () => {
       if (conns.get(user.id) !== c) return;
-      conns.delete(user.id);
       dequeue(user.id);
-      leaveRoom(c);
-      leaveLobby(c);
+      const h = c.room?.humans.get(user.id);
+      if (c.room && h) c.room.inputs[h.slot] = 0;
+      setTimeout(() => {
+        if (conns.get(user.id) !== c) return;
+        conns.delete(user.id);
+        leaveRoom(c);
+        leaveLobby(c);
+      }, RECONNECT_GRACE_MS);
     });
   });
 }
