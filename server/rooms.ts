@@ -174,7 +174,7 @@ function createRoom(mode: Room["mode"], cfg: MatchConfig, humans: Room["humans"]
     events: [],
     timer: null,
     last: performance.now(),
-    acc: 0,
+    acc: -3000,
     lobby,
     done: false,
   };
@@ -189,6 +189,13 @@ function createRoom(mode: Room["mode"], cfg: MatchConfig, humans: Room["humans"]
     const now = performance.now();
     room.acc += Math.min(250, now - room.last);
     room.last = now;
+    if (room.acc < 0) {
+      if (++ticksSinceSnap >= 30) {
+        ticksSinceSnap = 0;
+        broadcastSnap(room);
+      }
+      return;
+    }
     while (room.acc >= stepMs && !room.done) {
       room.acc -= stepMs;
       step(room.state, room.cfg, room.inputs);

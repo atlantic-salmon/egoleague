@@ -1,0 +1,128 @@
+"use client";
+
+import { Lock, Footprints, Crown, Shirt, Sparkle } from "lucide-react";
+import { RARITY_INFO, type Rarity } from "@/shared/rarity";
+import { Portrait } from "./portrait";
+import type { Item } from "@/lib/types";
+import { cn } from "@/lib/utils";
+import type { GearSlot } from "@/shared/catalog";
+
+export function RarityBadge({ rarity, className }: { rarity: Rarity; className?: string }) {
+  const r = RARITY_INFO[rarity];
+  return (
+    <span
+      className={cn("inline-flex items-center rounded px-1.5 py-0.5 font-heading text-[11px] uppercase tracking-wider text-slate-950", className)}
+      style={{ background: r.color }}
+      title={r.label}
+    >
+      {r.short}
+    </span>
+  );
+}
+
+export function GearIcon({ slot, className, style }: { slot: GearSlot; className?: string; style?: React.CSSProperties }) {
+  const I = slot === "boots" ? Footprints : slot === "band" ? Crown : Shirt;
+  return <I className={className} style={style} />;
+}
+
+export function RollBar({ label, value }: { label: string; value: number }) {
+  const color = value >= 90 ? "#22d3ee" : value >= 75 ? "#fbbf24" : value >= 55 ? "#a78bfa" : value >= 35 ? "#38bdf8" : "#94a3b8";
+  return (
+    <div className="flex items-center gap-1.5 text-[11px]">
+      <span className="w-12 shrink-0 text-slate-400">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-800">
+        <div className="h-full rounded-full" style={{ width: `${value}%`, background: color }} />
+      </div>
+      <span className="w-6 text-right font-mono tabular-nums text-slate-200">{value}</span>
+    </div>
+  );
+}
+
+const gradeColor: Record<string, string> = { S: "text-cyan-300", A: "text-amber-300", B: "text-violet-300", C: "text-sky-300", D: "text-slate-400" };
+
+export function ItemCard({
+  item,
+  onClick,
+  selected,
+  compact,
+  footer,
+}: {
+  item: Item;
+  onClick?: () => void;
+  selected?: boolean;
+  compact?: boolean;
+  footer?: React.ReactNode;
+}) {
+  const r = RARITY_INFO[item.rarity];
+  const high = ["L", "WC", "N1"].includes(item.rarity);
+  return (
+    <div
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (onClick && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className={cn(
+        "group relative flex flex-col overflow-hidden rounded-xl border bg-slate-900/90 text-left transition",
+        onClick && "cursor-pointer hover:-translate-y-0.5 focus-visible:outline-2",
+        selected && "ring-2 ring-blue-400",
+      )}
+      style={{ borderColor: r.color, boxShadow: `0 0 ${high ? 26 : 12}px -6px ${r.glow}` }}
+    >
+      <div
+        className={cn("relative flex items-end justify-center overflow-hidden", compact ? "h-24" : "h-32", high && "shimmer")}
+        style={{ background: `radial-gradient(circle at 50% 30%, ${r.glow}, transparent 70%), linear-gradient(180deg, #0f172a, #020617)` }}
+      >
+        {item.kind === "char" ? (
+          <Portrait id={item.characterId} expr={high ? "ego" : "normal"} className={cn("h-full", compact ? "w-24" : "w-32")} />
+        ) : (
+          <div className="flex h-full items-center justify-center">
+            <GearIcon slot={item.slot} className={cn(compact ? "size-10" : "size-14")} style={{ color: r.color }} />
+          </div>
+        )}
+        <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
+          <RarityBadge rarity={item.rarity} />
+          {item.perfect && (
+            <span className="inline-flex items-center gap-0.5 rounded bg-cyan-400/90 px-1 text-[10px] font-bold uppercase text-slate-950">
+              <Sparkle className="size-3" /> Perfect
+            </span>
+          )}
+        </div>
+        <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
+          {item.kind === "char" && <span className="rounded bg-slate-950/80 px-1.5 font-heading text-lg leading-tight text-white">{item.ovr}</span>}
+          {item.locked && (
+            <span className="rounded bg-amber-500/90 p-0.5 text-slate-950" title="Locked in a trade or listing">
+              <Lock className="size-3" />
+            </span>
+          )}
+        </div>
+        <span className={cn("absolute bottom-1 right-2 font-heading text-2xl italic", gradeColor[item.grade])}>{item.grade}</span>
+      </div>
+      <div className="flex flex-1 flex-col gap-1 p-2">
+        <div className="min-w-0">
+          <div className="truncate text-sm font-semibold text-white">{item.kind === "char" ? item.name.split(" (")[0] : item.name}</div>
+          <div className="truncate text-xs text-slate-400">
+            {item.kind === "char" ? `${item.variantLabel} · ${item.archetypeLabel}` : `${item.slot === "band" ? "Headband" : item.slot === "boots" ? "Boots" : "Jersey"}`} · Lv {item.level}
+          </div>
+        </div>
+        {!compact && (
+          <div className="mt-1 space-y-0.5">
+            <RollBar label="Talent" value={item.talent} />
+            <RollBar label="Quality" value={item.quality} />
+          </div>
+        )}
+        {compact && (
+          <div className="flex gap-2 text-[11px] text-slate-400">
+            <span>T {item.talent}</span>
+            <span>Q {item.quality}</span>
+          </div>
+        )}
+        {footer}
+      </div>
+    </div>
+  );
+}
