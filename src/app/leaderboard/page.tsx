@@ -54,7 +54,7 @@ export default function LeaderboardPage() {
           <span className="text-slate-300">Your rank</span>
           <span className="font-heading text-2xl text-white">#{data.me.rank}</span>
           <span className="text-slate-400">
-            {data.me.v.toLocaleString()} {b.unit}
+            {board === "gems" && user.username.toLowerCase() === "ego" ? "∞" : data.me.v.toLocaleString()} {b.unit}
           </span>
         </div>
       )}
