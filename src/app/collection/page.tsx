@@ -96,7 +96,7 @@ function Collection() {
           >
             <option value="rarity">Rarity</option>
             <option value="ovr">{kind === "char" ? "OVR" : "Rolls"}</option>
-            <option value="rolls">Talent + Quality</option>
+            <option value="rolls">Talent / Quality</option>
             <option value="value">Value</option>
             <option value="newest">Newest</option>
           </select>

@@ -135,7 +135,7 @@ function RatesDialog({ open, onOpenChange, cfg, banner }: { open: boolean; onOpe
             <tr>
               <th className="py-1 text-left">Rarity</th>
               <th className="py-1 text-right">Chance</th>
-              <th className="py-1 text-right">Talent / Quality range</th>
+              <th className="py-1 text-right">Roll range</th>
             </tr>
           </thead>
           <tbody>
@@ -153,7 +153,7 @@ function RatesDialog({ open, onOpenChange, cfg, banner }: { open: boolean; onOpe
           </tbody>
         </table>
         <ul className="list-disc space-y-1 pl-5 text-xs text-slate-400">
-          <li>Every item rolls Talent and Quality once, on our server. They can never be changed, rerolled or upgraded.</li>
+          <li>Players roll Talent; gear rolls Quality. Rolls are permanent and never rerolled.</li>
           <li>Legendary or better is guaranteed within {banner.pity.hardL} pulls. #1 is guaranteed within {banner.pity.hardN1} pulls.</li>
           <li>Every 10-pull includes at least one Rare or better.</li>
           {banner.featured.length > 0 && (
