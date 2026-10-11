@@ -156,7 +156,7 @@ export default function Home() {
         <div className="grid gap-3 sm:grid-cols-2">
           {[
             ["Isagi's Path", "Eight stages from the First Selection to the Neo Egoist League, with animated cutscenes."],
-            ["Gacha with permanent rolls", "Every pull rolls Talent and Quality from 0 to 100. They can never be changed."],
+            ["Gacha with permanent rolls", "Players roll Talent; gear rolls Quality. Rolls are permanent."],
             ["Two players, one laptop", "WASD vs arrow keys. No account needed for local play."],
             ["Online lobbies", "Mix friends and bots on either side, or queue for ranked 3v3."],
             ["Market and trades", "Sell players for gems or swap directly with friends."],

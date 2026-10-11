@@ -255,12 +255,22 @@ function Stage({ stageId }: { stageId: string }) {
             )}
           </ul>
           <div className="mt-auto flex flex-col gap-2">
-            <Button size="lg" onClick={() => setPhase("before")} disabled={status ? !status.unlocked : false}>
-              <Film /> Watch and play
-            </Button>
-            <Button variant="outline" onClick={startMatch} disabled={status ? !status.unlocked : false}>
-              <Swords /> Skip to kickoff
-            </Button>
+            <button
+              type="button"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:pointer-events-none disabled:opacity-50"
+              onClick={() => setPhase("before")}
+              disabled={!!status && !status.unlocked}
+            >
+              <Film className="size-4" /> Watch and play
+            </button>
+            <button
+              type="button"
+              className="inline-flex h-11 items-center justify-center gap-2 rounded-lg border border-white/20 bg-transparent px-4 text-sm font-semibold text-white hover:bg-white/5 disabled:pointer-events-none disabled:opacity-50"
+              onClick={() => void startMatch()}
+              disabled={!!status && !status.unlocked}
+            >
+              <Swords className="size-4" /> Skip to kickoff
+            </button>
             {status && !status.unlocked && <p className="text-xs text-slate-500">Clear {stage.requires} first.</p>}
           </div>
         </div>

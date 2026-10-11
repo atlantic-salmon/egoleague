@@ -209,9 +209,14 @@ function LeagueMatch({ teamId }: { teamId: string }) {
           <div className="text-sm text-slate-300">
             First win: <span className="text-cyan-200">{foe.rewards.gems} gems</span> · Replay: smaller gem payout
           </div>
-          <Button size="lg" onClick={startMatch} disabled={status ? !status.unlocked : false || !myTeam}>
-            <Swords /> Kick off
-          </Button>
+          <button
+            type="button"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 text-sm font-semibold text-white hover:bg-blue-500 disabled:pointer-events-none disabled:opacity-50"
+            onClick={() => void startMatch()}
+            disabled={!myTeam || (!!status && !status.unlocked)}
+          >
+            <Swords className="size-4" /> Kick off
+          </button>
           {status && !status.unlocked && <p className="text-xs text-slate-500">Beat the previous tier first.</p>}
         </div>
       </div>
