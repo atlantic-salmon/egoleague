@@ -27,7 +27,10 @@ export function RarityBadge({ rarity, className }: { rarity: Rarity; className?:
   }
   return (
     <span
-      className={cn("inline-flex items-center rounded px-1.5 py-0.5 font-heading text-[11px] uppercase tracking-wider text-slate-950", className)}
+      className={cn(
+        "inline-flex items-center rounded border border-black/40 px-1.5 py-0.5 font-heading text-[11px] uppercase tracking-wider text-slate-950 shadow-md",
+        className,
+      )}
       style={{ background: r.color, boxShadow: `0 0 10px ${r.glow}` }}
       title={r.label}
     >

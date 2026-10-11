@@ -293,7 +293,9 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
       >
         <X className="size-5" />
       </button>
-      <p className="absolute bottom-4 text-xs text-slate-500">Click anywhere to skip</p>
+      <p className="absolute bottom-4 text-xs text-slate-500">
+        {phase === "one" ? "Click for next card" : phase === "charge" ? "Click to skip charge" : "Click Continue when ready"}
+      </p>
     </div>
   );
 }

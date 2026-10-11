@@ -341,7 +341,7 @@ function useBanners(cfg: MatchConfig) {
           const id = ++idRef.current;
           const cue: AbilityCue = { id, charId: pl.charId, skillId: e.skillId, name: pl.name, teamColor: cfg.teams[pl.side].color };
           setAbility(cue);
-          const ms = 2500;
+          const ms = 3000;
           setTimeout(() => setAbility((cur) => (cur?.id === id ? null : cur)), ms);
         } else if (e.t === "end") push({ kind: "end", text: "Full Time", color: "#1d4ed8" }, 4000);
       }
