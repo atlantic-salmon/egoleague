@@ -80,7 +80,8 @@ export default function SettingsPage() {
                 <th className="py-1 pr-3">Scheme</th>
                 <th className="py-1 pr-3">Move</th>
                 <th className="py-1 pr-3">Shoot / tackle</th>
-                <th className="py-1">Pass</th>
+                <th className="py-1 pr-3">Pass</th>
+                <th className="py-1">Ability</th>
               </tr>
             </thead>
             <tbody>
@@ -89,7 +90,8 @@ export default function SettingsPage() {
                   <td className="py-2 pr-3 font-semibold text-white">{s.label}</td>
                   <td className="py-2 pr-3 text-slate-300">{CONTROL_HELP[s.id].move}</td>
                   <td className="py-2 pr-3 text-slate-300">{CONTROL_HELP[s.id].shoot}</td>
-                  <td className="py-2 text-slate-300">{CONTROL_HELP[s.id].pass}</td>
+                  <td className="py-2 pr-3 text-slate-300">{CONTROL_HELP[s.id].pass}</td>
+                  <td className="py-2 text-slate-300">{CONTROL_HELP[s.id].ability}</td>
                 </tr>
               ))}
             </tbody>
@@ -99,6 +101,7 @@ export default function SettingsPage() {
           <li>There is no sprint button. Hold a direction and your player winds up to top speed; how fast depends on their Acceleration.</li>
           <li>Turning sharply bleeds momentum. Agile players keep more speed through turns.</li>
           <li>Hold shoot to charge a stronger shot. Pressing shoot without the ball is a sliding tackle.</li>
+          <li>Press the Ability key (Q / U) to fire your character&apos;s special technique — a short cutscene plays, then the effect kicks in.</li>
           <li>Esc or P pauses local matches.</li>
         </ul>
         <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-400">

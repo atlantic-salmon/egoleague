@@ -66,8 +66,13 @@ export function playEvents(events: MatchEvent[]) {
     } else if (e.t === "save") {
       tone(70, 0.2, "sine", 0.4, 40);
       noise(0.1, 0.2, 400);
-    } else if (e.t === "tackle") noise(0.12, 0.3, 300);
-    else if (e.t === "post") tone(880, 0.25, "triangle", 0.15, 600);
+    }     else if (e.t === "tackle") noise(0.12, 0.3, 300);
+    else if (e.t === "ability") {
+      tone(220, 0.18, "sawtooth", 0.12, 900);
+      tone(660, 0.35, "square", 0.1, 400);
+      setTimeout(() => tone(990, 0.45, "square", 0.08, 600), 80);
+      noise(0.25, 0.18, 900);
+    } else if (e.t === "post") tone(880, 0.25, "triangle", 0.15, 600);
     else if (e.t === "kickoff" || e.t === "end") {
       tone(2600, 0.25, "sine", 0.08, 2400);
       if (e.t === "end") setTimeout(() => tone(2600, 0.6, "sine", 0.08, 2300), 300);

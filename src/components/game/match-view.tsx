@@ -10,7 +10,9 @@ import { playEvents } from "@/game/sfx";
 import { usePref } from "@/lib/prefs";
 import type { MatchConfig, MatchEvent, MatchState } from "@/game/types";
 import { TouchControls } from "./touch-controls";
+import { AbilityOverlay, type AbilityCue } from "./ability-overlay";
 import { Button } from "@/components/ui/button";
+import { SKILLS } from "@/shared/catalog";
 
 interface Banner {
   id: number;
@@ -38,6 +40,7 @@ function Hud({
   banners,
   paused,
   countdown,
+  ability,
 }: {
   cfg: MatchConfig;
   score: [number, number];
@@ -45,6 +48,7 @@ function Hud({
   banners: Banner[];
   paused: boolean;
   countdown: number;
+  ability: AbilityCue | null;
 }) {
   return (
     <>
@@ -127,6 +131,7 @@ function Hud({
           </motion.div>
         </div>
       )}
+      <AbilityOverlay cue={ability} />
       {paused && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
           <div className="font-heading text-6xl italic tracking-wide text-white">PAUSED</div>
@@ -138,6 +143,7 @@ function Hud({
 
 function useBanners(cfg: MatchConfig) {
   const [banners, setBanners] = useState<Banner[]>([]);
+  const [ability, setAbility] = useState<AbilityCue | null>(null);
   const idRef = useRef(0);
   const push = useCallback((b: Omit<Banner, "id">, ms: number) => {
     const id = ++idRef.current;
@@ -152,12 +158,20 @@ function useBanners(cfg: MatchConfig) {
           push({ kind: "goal", text: "GOAL!!", sub: scorer ? `${scorer} scores` : cfg.teams[e.side].name, color: cfg.teams[e.side].color }, 2300);
         } else if (e.t === "save") {
           push({ kind: "save", text: "Blue Lock Man", sub: e.catch ? "CATCHES IT" : "PARRIES", color: "#0e7490" }, 1200);
+        } else if (e.t === "ability") {
+          const pl = cfg.players[e.p];
+          if (!pl) continue;
+          const id = ++idRef.current;
+          const cue: AbilityCue = { id, charId: pl.charId, skillId: e.skillId, name: pl.name, teamColor: cfg.teams[pl.side].color };
+          setAbility(cue);
+          const ms = Math.round(((SKILLS[e.skillId] ?? SKILLS.none).ability.durationSec) * 1000 * 0.55) + 900;
+          setTimeout(() => setAbility((cur) => (cur?.id === id ? null : cur)), ms);
         } else if (e.t === "end") push({ kind: "end", text: "Full Time", color: "#1d4ed8" }, 4000);
       }
     },
     [cfg, push],
   );
-  return { banners, onEvents };
+  return { banners, ability, onEvents };
 }
 
 function Frame({
@@ -234,7 +248,7 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useCanvas(wrapRef);
   const { shake, sound, toggleSound } = useSettings();
-  const { banners, onEvents } = useBanners(config);
+  const { banners, ability, onEvents } = useBanners(config);
   const [score, setScore] = useState<[number, number]>([0, 0]);
   const [clock, setClock] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -333,7 +347,7 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
   return (
     <Frame wrapRef={wrapRef} onPauseToggle={() => setPaused((p) => !p)} paused={paused} sound={sound} toggleSound={toggleSound} help={help}>
       <canvas ref={canvasRef} className="absolute inset-0" />
-      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={paused} countdown={countdown} />
+      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={paused} countdown={countdown} ability={ability} />
       <TouchControls onBits={(b) => kbRef.current && (kbRef.current.touchBits = b)} color={HUMAN_COLORS[0]} />
     </Frame>
   );
@@ -349,7 +363,7 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useCanvas(wrapRef);
   const { shake, sound, toggleSound } = useSettings();
-  const { banners, onEvents } = useBanners(config);
+  const { banners, ability, onEvents } = useBanners(config);
   const [score, setScore] = useState<[number, number]>([0, 0]);
   const [clock, setClock] = useState(0);
   const [countdown, setCountdown] = useState(3);
@@ -436,7 +450,7 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
   return (
     <Frame wrapRef={wrapRef} sound={sound} toggleSound={toggleSound} help={`Move ${CONTROL_HELP.solo.move}. Shoot/tackle ${CONTROL_HELP.solo.shoot}. Pass ${CONTROL_HELP.solo.pass}.`}>
       <canvas ref={canvasRef} className="absolute inset-0" />
-      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={false} countdown={countdown} />
+      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={false} countdown={countdown} ability={ability} />
       <TouchControls onBits={(b) => kbRef.current && (kbRef.current.touchBits = b)} color={HUMAN_COLORS[you % HUMAN_COLORS.length]} />
     </Frame>
   );

@@ -118,34 +118,158 @@ export const CHARACTERS: CharacterDef[] = [
   { id: "igaguri", name: "Igarashi Gurimu", hair: "#3f3f46", hairStyle: "buzz", eye: "#71717a", skin: "#e8b48f" },
   { id: "sae", name: "Itoshi Sae", hair: "#7f1d1d", hairStyle: "slick", eye: "#14b8a6", skin: "#f1d1b6" },
   { id: "kaiser", name: "Michael Kaiser", hair: "#fde68a", hairStyle: "slick", eye: "#2563eb", skin: "#f8e1cf" },
+  // Same silhouette as every other striker — a human keeper, not a robot.
+  { id: "blm", name: "Blue Lock Man", hair: "#0b1a3a", hairStyle: "buzz", eye: "#22d3ee", skin: "#e8c4a0" },
+  { id: "ego", name: "Ego Jinpachi", hair: "#111827", hairStyle: "slick", eye: "#ef4444", skin: "#f5d5b8" },
 ];
 
 export const CHARACTER_BY_ID: Record<string, CharacterDef> = Object.fromEntries(CHARACTERS.map((c) => [c.id, c]));
+
+/** Characters that get AI profile art under /portraits/{id}.png */
+export const PORTRAIT_IDS = CHARACTERS.map((c) => c.id);
+
+export type AbilityFx = "metavision" | "speedlines" | "flash" | "impact" | "chains" | "zoom" | "glitch";
+export type AbilityEffect = "burst" | "vision" | "dribble" | "shot" | "steal" | "tank" | "pass" | "ignite" | "none";
+
+export interface AbilityDef {
+  cooldownSec: number;
+  durationSec: number;
+  title: string;
+  line: string;
+  fx: AbilityFx[];
+  effect: AbilityEffect;
+}
 
 export interface SkillDef {
   id: string;
   name: string;
   desc: string;
   mods: Partial<Record<StatKey, number>>;
+  ability: AbilityDef;
 }
 
+const ab = (cooldownSec: number, durationSec: number, title: string, line: string, fx: AbilityFx[], effect: AbilityEffect): AbilityDef => ({
+  cooldownSec,
+  durationSec,
+  title,
+  line,
+  fx,
+  effect,
+});
+
 export const SKILLS: Record<string, SkillDef> = {
-  none: { id: "none", name: "Raw Ego", desc: "No special technique yet.", mods: {} },
-  spatial: { id: "spatial", name: "Spatial Awareness", desc: "+4 Passing, +3 Accuracy.", mods: { passing: 4, accuracy: 3 } },
-  direct: { id: "direct", name: "Direct Shot", desc: "+6 Shot Power, faster charge.", mods: { shot: 6 } },
-  metavision: { id: "metavision", name: "Metavision", desc: "+8 Passing, +6 Accuracy, +4 Agility.", mods: { passing: 8, accuracy: 6, agility: 4 } },
-  monster: { id: "monster", name: "Monster Dribble", desc: "+8 Control, +6 Agility.", mods: { control: 8, agility: 6 } },
-  sprinter: { id: "sprinter", name: "Panther Legs", desc: "+10 Top Speed once wound up.", mods: { speed: 10 } },
-  wildcard: { id: "wildcard", name: "Wild Card Body", desc: "+10 Physical, +4 Shot Power.", mods: { physical: 10, shot: 4 } },
-  trap: { id: "trap", name: "Genius Trap", desc: "+10 Control, +4 Accuracy.", mods: { control: 10, accuracy: 4 } },
-  chameleon: { id: "chameleon", name: "Chameleon", desc: "+3 to every stat.", mods: { speed: 3, accel: 3, agility: 3, shot: 3, accuracy: 3, control: 3, passing: 3, tackle: 3, physical: 3 } },
-  king: { id: "king", name: "King's Shot", desc: "+10 Shot Power, +4 Physical.", mods: { shot: 10, physical: 4 } },
-  destroyer: { id: "destroyer", name: "Destroyer", desc: "+8 Passing, +6 Tackling.", mods: { passing: 8, tackle: 6 } },
-  devour: { id: "devour", name: "Devour", desc: "+6 Accuracy, +6 Accel, +4 Shot.", mods: { accuracy: 6, accel: 6, shot: 4 } },
-  ignition: { id: "ignition", name: "Ignition", desc: "+12 Acceleration.", mods: { accel: 12 } },
-  emperor: { id: "emperor", name: "Emperor Impact", desc: "+12 Shot Power, +6 Speed.", mods: { shot: 12, speed: 6 } },
-  prodigy: { id: "prodigy", name: "Prodigy's Vision", desc: "+12 Passing, +8 Control.", mods: { passing: 12, control: 8 } },
-  ego: { id: "ego", name: "World's #1 Ego", desc: "+8 to every attacking stat.", mods: { speed: 8, accel: 8, shot: 8, accuracy: 8, control: 8 } },
+  none: {
+    id: "none",
+    name: "Raw Ego",
+    desc: "+0. Activate for a short ego rush.",
+    mods: {},
+    ability: ab(18, 2.2, "EGO", "I refuse to lose here.", ["speedlines", "flash"], "burst"),
+  },
+  spatial: {
+    id: "spatial",
+    name: "Spatial Awareness",
+    desc: "+4 Passing, +3 Accuracy. Activate to read the field.",
+    mods: { passing: 4, accuracy: 3 },
+    ability: ab(16, 3, "FIELD READ", "I can see the goal already.", ["metavision", "zoom"], "vision"),
+  },
+  direct: {
+    id: "direct",
+    name: "Direct Shot",
+    desc: "+6 Shot Power. Activate to force a charged strike.",
+    mods: { shot: 6 },
+    ability: ab(14, 2.5, "DIRECT SHOT", "One touch. Straight through you.", ["impact", "flash"], "shot"),
+  },
+  metavision: {
+    id: "metavision",
+    name: "Metavision",
+    desc: "+8 Passing, +6 Accuracy, +4 Agility. Activate to freeze the play in your head.",
+    mods: { passing: 8, accuracy: 6, agility: 4 },
+    ability: ab(20, 3.5, "METAVISION", "Every predator. Every path. Mine.", ["metavision", "zoom", "glitch"], "vision"),
+  },
+  monster: {
+    id: "monster",
+    name: "Monster Dribble",
+    desc: "+8 Control, +6 Agility. Activate to become untouchable.",
+    mods: { control: 8, agility: 6 },
+    ability: ab(16, 3.2, "MONSTER", "Come play with me.", ["speedlines", "chains"], "dribble"),
+  },
+  sprinter: {
+    id: "sprinter",
+    name: "Panther Legs",
+    desc: "+10 Top Speed. Activate for a full-speed breakaway.",
+    mods: { speed: 10 },
+    ability: ab(15, 2.8, "PANTHER", "Don't blink.", ["speedlines", "flash"], "burst"),
+  },
+  wildcard: {
+    id: "wildcard",
+    name: "Wild Card Body",
+    desc: "+10 Physical, +4 Shot Power. Activate to bulldoze the lane.",
+    mods: { physical: 10, shot: 4 },
+    ability: ab(17, 3, "WILD CARD", "I remade this body to score.", ["impact", "flash"], "tank"),
+  },
+  trap: {
+    id: "trap",
+    name: "Genius Trap",
+    desc: "+10 Control, +4 Accuracy. Activate to snatch the ball.",
+    mods: { control: 10, accuracy: 4 },
+    ability: ab(15, 2.4, "TRAP", "It's already mine.", ["zoom", "flash"], "steal"),
+  },
+  chameleon: {
+    id: "chameleon",
+    name: "Chameleon",
+    desc: "+3 to every stat. Activate to copy the flow of the match.",
+    mods: { speed: 3, accel: 3, agility: 3, shot: 3, accuracy: 3, control: 3, passing: 3, tackle: 3, physical: 3 },
+    ability: ab(16, 3, "CHAMELEON", "Whatever you are, I'll become better.", ["glitch", "metavision"], "pass"),
+  },
+  king: {
+    id: "king",
+    name: "King's Shot",
+    desc: "+10 Shot Power, +4 Physical. Activate to demand the goal.",
+    mods: { shot: 10, physical: 4 },
+    ability: ab(16, 2.6, "KING", "Kneel. This is my pitch.", ["impact", "speedlines"], "shot"),
+  },
+  destroyer: {
+    id: "destroyer",
+    name: "Destroyer",
+    desc: "+8 Passing, +6 Tackling. Activate to cut the field in half.",
+    mods: { passing: 8, tackle: 6 },
+    ability: ab(15, 3, "DESTROYER", "Your options just died.", ["chains", "metavision"], "pass"),
+  },
+  devour: {
+    id: "devour",
+    name: "Devour",
+    desc: "+6 Accuracy, +6 Accel, +4 Shot. Activate to steal the future.",
+    mods: { accuracy: 6, accel: 6, shot: 4 },
+    ability: ab(18, 3.2, "DEVOUR", "I'll eat your goal whole.", ["metavision", "impact", "flash"], "steal"),
+  },
+  ignition: {
+    id: "ignition",
+    name: "Ignition",
+    desc: "+12 Acceleration. Activate to explode off the mark.",
+    mods: { accel: 12 },
+    ability: ab(13, 2.5, "IGNITION", "Now.", ["speedlines", "flash"], "ignite"),
+  },
+  emperor: {
+    id: "emperor",
+    name: "Emperor Impact",
+    desc: "+12 Shot Power, +6 Speed. Activate for an emperor's strike.",
+    mods: { shot: 12, speed: 6 },
+    ability: ab(18, 2.8, "EMPEROR", "Behold. Impact.", ["impact", "zoom", "flash"], "shot"),
+  },
+  prodigy: {
+    id: "prodigy",
+    name: "Prodigy's Vision",
+    desc: "+12 Passing, +8 Control. Activate to own the midfield.",
+    mods: { passing: 12, control: 8 },
+    ability: ab(17, 3.4, "PRODIGY", "You're all still children.", ["metavision", "zoom"], "pass"),
+  },
+  ego: {
+    id: "ego",
+    name: "World's #1 Ego",
+    desc: "+8 to every attacking stat. Activate to become the world's #1.",
+    mods: { speed: 8, accel: 8, shot: 8, accuracy: 8, control: 8 },
+    ability: ab(22, 4, "WORLD'S #1", "This is my ego.", ["speedlines", "metavision", "impact", "flash"], "burst"),
+  },
 };
 
 export interface VariantDef {
@@ -322,9 +446,9 @@ export const GEAR_BY_ID: Record<string, GearDef> = Object.fromEntries(GEAR.map((
 export const STARTER_VARIANTS = ["isagi.base", "bachira.base", "chigiri.base", "kunigami.base", "igaguri.base"];
 export const STARTER_GEAR = ["boots.C", "band.C", "jersey.C"];
 
-/** Blue Lock Man, the hulking goalkeeper drone guarding every goal. */
+/** Kit colors for Blue Lock Man — drawn like any other character on the pitch. */
 export const BLUE_LOCK_MAN = {
   name: "Blue Lock Man",
-  body: "#0b1a3a",
-  visor: "#22d3ee",
+  kit: "#1d4ed8",
+  accent: "#22d3ee",
 };

@@ -270,6 +270,17 @@ function drawPlayer(
   ctx.closePath();
   ctx.fill();
 
+  if (p.abilityT > 0) {
+    const pulse = 0.45 + Math.sin(performance.now() / 90) * 0.35;
+    ctx.strokeStyle = `rgba(34,211,238,${0.35 + pulse * 0.5})`;
+    ctx.lineWidth = 5;
+    ctx.shadowColor = "#22d3ee";
+    ctx.shadowBlur = 18;
+    ctx.beginPath();
+    ctx.arc(0, 0, PR + 14 + pulse * 3, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+  }
   if (p.charge >= 0) {
     ctx.strokeStyle = p.charge > 0.95 ? "#f43f5e" : "#38bdf8";
     ctx.lineWidth = 4;
@@ -311,41 +322,58 @@ function drawPlayer(
 function drawGoalie(ctx: CanvasRenderingContext2D, s: MatchState, side: 0 | 1, cfg: MatchConfig) {
   const g = s.goalies[side];
   const out = side === 0 ? 1 : -1;
+  const hx = out;
+  const hy = 0;
   const stretch = 1 + g.dive * 0.35;
+  const ch = CHARACTER_BY_ID.blm;
   ctx.save();
   ctx.translate(g.x, g.y);
-  ctx.fillStyle = "rgba(0,0,0,0.35)";
+  ctx.fillStyle = "rgba(0,0,0,0.3)";
   ctx.beginPath();
-  ctx.ellipse(4, 6, GR * 1.05, GR * 0.9 * stretch, 0, 0, Math.PI * 2);
+  ctx.ellipse(3, 5, GR * 1.05, GR * 0.8 * stretch, 0, 0, Math.PI * 2);
   ctx.fill();
   ctx.scale(1, stretch);
-  ctx.fillStyle = BLUE_LOCK_MAN.body;
+
+  // Same athlete silhouette as field players — kit, skin, hair — just larger.
+  ctx.fillStyle = BLUE_LOCK_MAN.kit;
   ctx.strokeStyle = cfg.teams[side].color;
-  ctx.lineWidth = 3;
-  roundRect(ctx, -GR * 0.75, -GR, GR * 1.5, GR * 2, 10);
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.arc(0, 0, GR, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
-  ctx.fillStyle = "#1e3a8a";
-  for (const k of [-1, 1]) {
-    ctx.beginPath();
-    ctx.arc(out * 2, k * (GR - 2), 8, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  const pulse = 0.6 + Math.sin(performance.now() / 200) * 0.4;
-  ctx.shadowColor = BLUE_LOCK_MAN.visor;
-  ctx.shadowBlur = 12 * pulse;
-  ctx.fillStyle = BLUE_LOCK_MAN.visor;
-  roundRect(ctx, out > 0 ? GR * 0.25 : -GR * 0.55, -GR * 0.55, GR * 0.3, GR * 1.1, 4);
+
+  ctx.fillStyle = ch?.skin ?? "#e8c4a0";
+  ctx.beginPath();
+  ctx.arc(hx * 3, hy * 3, GR * 0.55, 0, Math.PI * 2);
   ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.fillStyle = "#e0f2fe";
-  ctx.font = "900 11px var(--font-heading), Impact, sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+
+  const prevPR = PR;
+  // Temporarily draw hair at goalie scale by scaling around the head.
   ctx.save();
-  ctx.rotate(-Math.PI / 2 * out);
-  ctx.fillText("BL", 0, -out * 4);
+  ctx.translate(hx * 2, hy * 2);
+  ctx.scale(GR / prevPR, GR / prevPR);
+  drawHair(ctx, "blm", hx, hy);
   ctx.restore();
+
+  ctx.fillStyle = BLUE_LOCK_MAN.accent;
+  ctx.beginPath();
+  ctx.moveTo(hx * (GR + 8), hy * (GR + 8));
+  ctx.lineTo(hx * (GR + 1) - hy * 6, hy * (GR + 1) + hx * 6);
+  ctx.lineTo(hx * (GR + 1) + hy * 6, hy * (GR + 1) - hx * 6);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.font = "700 11px var(--font-sans), sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "bottom";
+  const label = "Blue Lock Man";
+  ctx.fillStyle = "rgba(2,6,23,0.6)";
+  const tw = ctx.measureText(label).width + 8;
+  roundRect(ctx, -tw / 2, -GR - 22, tw, 14, 4);
+  ctx.fill();
+  ctx.fillStyle = BLUE_LOCK_MAN.accent;
+  ctx.fillText(label, 0, -GR - 9);
   ctx.restore();
 }
 

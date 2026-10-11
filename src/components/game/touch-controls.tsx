@@ -8,7 +8,7 @@ import { IN } from "@/game/engine";
 export function TouchControls({ onBits, color }: { onBits: (bits: number) => void; color: string }) {
   const enabled = useMediaQuery("(pointer: coarse)");
   const stick = useRef({ id: -1, ox: 0, oy: 0, dx: 0, dy: 0 });
-  const buttons = useRef({ shoot: false, pass: false });
+  const buttons = useRef({ shoot: false, pass: false, ability: false });
   const [knob, setKnob] = useState({ x: 0, y: 0 });
 
   const emit = () => {
@@ -21,6 +21,7 @@ export function TouchControls({ onBits, color }: { onBits: (bits: number) => voi
     if (dx > dead) b |= IN.RIGHT;
     if (buttons.current.shoot) b |= IN.SHOOT;
     if (buttons.current.pass) b |= IN.PASS;
+    if (buttons.current.ability) b |= IN.ABILITY;
     onBits(b);
   };
 
@@ -61,11 +62,11 @@ export function TouchControls({ onBits, color }: { onBits: (bits: number) => voi
         />
       </div>
       <div className="pointer-events-auto absolute bottom-4 right-4 flex items-end gap-3">
-        {(["pass", "shoot"] as const).map((k) => (
+        {(["ability", "pass", "shoot"] as const).map((k) => (
           <button
             key={k}
             className={`rounded-full border-2 border-white/30 font-heading uppercase tracking-wider text-white active:scale-95 ${
-              k === "shoot" ? "size-20 bg-blue-600/70 text-lg" : "size-14 bg-slate-700/70 text-sm"
+              k === "shoot" ? "size-20 bg-blue-600/70 text-lg" : k === "ability" ? "size-14 bg-cyan-600/70 text-xs" : "size-14 bg-slate-700/70 text-sm"
             }`}
             onPointerDown={(e) => {
               e.preventDefault();

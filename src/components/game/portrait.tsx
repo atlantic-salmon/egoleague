@@ -1,11 +1,12 @@
-import { CHARACTER_BY_ID, BLUE_LOCK_MAN } from "@/shared/catalog";
+"use client";
+
+import { useState } from "react";
+import { CHARACTER_BY_ID } from "@/shared/catalog";
+import { cn } from "@/lib/utils";
 
 type Expr = "normal" | "ego" | "shock" | "smirk";
 
-/** Stylised vector bust used for cards and cutscenes. */
-export function Portrait({ id, expr = "normal", className, flip }: { id: string; expr?: Expr; className?: string; flip?: boolean }) {
-  if (id === "blm") return <BlueLockManPortrait className={className} />;
-  if (id === "ego") return <EgoPortrait className={className} expr={expr} />;
+function SvgBust({ id, expr, className, flip }: { id: string; expr: Expr; className?: string; flip?: boolean }) {
   const ch = CHARACTER_BY_ID[id] ?? CHARACTER_BY_ID.isagi;
   const eyeGlow = expr === "ego";
   const hair = ch.hair;
@@ -38,72 +39,66 @@ export function Portrait({ id, expr = "normal", className, flip }: { id: string;
         }
         fill={hair}
       />
-      <g>
-        {expr === "shock" ? (
-          <>
-            <circle cx="82" cy="102" r="8" fill="#fff" />
-            <circle cx="118" cy="102" r="8" fill="#fff" />
-            <circle cx="82" cy="102" r="3" fill={ch.eye} />
-            <circle cx="118" cy="102" r="3" fill={ch.eye} />
-          </>
-        ) : (
-          <>
-            <path d="M70 100 Q82 92 94 100 Q82 108 70 100 Z" fill="#fff" />
-            <path d="M106 100 Q118 92 130 100 Q118 108 106 100 Z" fill="#fff" />
-            <circle cx="82" cy="100" r="4.5" fill={ch.eye} />
-            <circle cx="118" cy="100" r="4.5" fill={ch.eye} />
-            {eyeGlow && (
-              <>
-                <circle cx="82" cy="100" r="9" fill={ch.eye} opacity="0.35" />
-                <circle cx="118" cy="100" r="9" fill={ch.eye} opacity="0.35" />
-              </>
-            )}
-          </>
-        )}
-        <path d={expr === "ego" ? "M68 88 L96 94" : "M68 90 L94 90"} stroke={hair} strokeWidth="4" strokeLinecap="round" />
-        <path d={expr === "ego" ? "M132 88 L104 94" : "M106 90 L132 90"} stroke={hair} strokeWidth="4" strokeLinecap="round" />
-        <path
-          d={expr === "smirk" || expr === "ego" ? "M90 130 Q104 136 112 126" : expr === "shock" ? "M94 130 Q100 138 106 130" : "M92 130 Q100 133 108 130"}
-          stroke="#7f1d1d"
-          strokeWidth="3"
-          fill="none"
-          strokeLinecap="round"
-        />
-      </g>
+      {expr === "shock" ? (
+        <>
+          <ellipse cx="78" cy="108" rx="8" ry="10" fill="#fff" />
+          <ellipse cx="122" cy="108" rx="8" ry="10" fill="#fff" />
+          <circle cx="78" cy="110" r="4" fill={ch.eye} />
+          <circle cx="122" cy="110" r="4" fill={ch.eye} />
+        </>
+      ) : (
+        <>
+          <ellipse cx="78" cy="108" rx="9" ry="8" fill="#fff" />
+          <ellipse cx="122" cy="108" rx="9" ry="8" fill="#fff" />
+          <circle cx="80" cy="108" r={eyeGlow ? 5 : 4} fill={ch.eye}>
+            {eyeGlow && <animate attributeName="opacity" values="1;0.55;1" dur="1.2s" repeatCount="indefinite" />}
+          </circle>
+          <circle cx="124" cy="108" r={eyeGlow ? 5 : 4} fill={ch.eye}>
+            {eyeGlow && <animate attributeName="opacity" values="1;0.55;1" dur="1.2s" repeatCount="indefinite" />}
+          </circle>
+          {eyeGlow && (
+            <>
+              <circle cx="80" cy="108" r="9" fill={ch.eye} opacity="0.35" filter="blur(3px)" />
+              <circle cx="124" cy="108" r="9" fill={ch.eye} opacity="0.35" filter="blur(3px)" />
+            </>
+          )}
+        </>
+      )}
+      <path d={expr === "ego" ? "M68 88 L96 94" : "M68 90 L94 90"} stroke={hair} strokeWidth="4" strokeLinecap="round" />
+      <path d={expr === "ego" ? "M132 88 L104 94" : "M106 90 L132 90"} stroke={hair} strokeWidth="4" strokeLinecap="round" />
+      <path
+        d={expr === "smirk" || expr === "ego" ? "M90 130 Q104 136 112 126" : expr === "shock" ? "M94 130 Q100 138 106 130" : "M92 130 Q100 133 108 130"}
+        stroke="#4b1d1d"
+        strokeWidth="3"
+        fill="none"
+        strokeLinecap="round"
+      />
+      {id === "blm" && (
+        <path d="M70 148 H130" stroke="#22d3ee" strokeWidth="3" opacity="0.7" strokeLinecap="round" />
+      )}
     </svg>
   );
 }
 
-function EgoPortrait({ className, expr }: { className?: string; expr: Expr }) {
-  return (
-    <svg viewBox="0 0 200 220" className={className} role="img" aria-label="Ego Jinpachi">
-      <path d="M30 220 C40 165 70 150 100 150 C130 150 160 165 170 220 Z" fill="#111827" />
-      <rect x="88" y="122" width="24" height="34" rx="8" fill="#e7d3c2" />
-      <path d="M64 84 C64 48 136 48 136 84 L134 114 C130 140 116 152 100 152 C84 152 70 140 66 114 Z" fill="#e7d3c2" />
-      <path d="M50 120 C36 60 64 28 100 28 C136 28 164 60 150 120 L140 82 C126 66 74 66 60 82 Z" fill="#0f172a" />
-      <rect x="66" y="92" width="30" height="18" rx="4" fill="#0b1220" stroke="#e5e7eb" strokeWidth="3" />
-      <rect x="104" y="92" width="30" height="18" rx="4" fill="#0b1220" stroke="#e5e7eb" strokeWidth="3" />
-      <path d="M96 100 L104 100" stroke="#e5e7eb" strokeWidth="3" />
-      <rect x="70" y="96" width="22" height="4" fill="#38bdf8" opacity="0.7" />
-      <rect x="108" y="96" width="22" height="4" fill="#38bdf8" opacity="0.7" />
-      <path d={expr === "smirk" ? "M88 132 Q104 140 116 128" : "M90 132 L110 132"} stroke="#4b1d1d" strokeWidth="3" fill="none" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function BlueLockManPortrait({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 200 220" className={className} role="img" aria-label="Blue Lock Man">
-      <rect x="22" y="140" width="156" height="90" rx="30" fill={BLUE_LOCK_MAN.body} stroke="#1d4ed8" strokeWidth="4" />
-      <rect x="50" y="30" width="100" height="116" rx="28" fill={BLUE_LOCK_MAN.body} stroke="#1d4ed8" strokeWidth="4" />
-      <rect x="62" y="70" width="76" height="22" rx="10" fill={BLUE_LOCK_MAN.visor}>
-        <animate attributeName="opacity" values="1;0.55;1" dur="1.6s" repeatCount="indefinite" />
-      </rect>
-      <rect x="62" y="70" width="76" height="22" rx="10" fill={BLUE_LOCK_MAN.visor} opacity="0.4" filter="blur(6px)" />
-      <text x="100" y="196" textAnchor="middle" fontFamily="Impact, sans-serif" fontSize="34" fill="#e0f2fe">
-        BL
-      </text>
-      <path d="M70 116 L130 116" stroke="#1e3a8a" strokeWidth="6" strokeLinecap="round" />
-    </svg>
-  );
+/** Character bust: prefers AI profile art when present, falls back to the vector bust. */
+export function Portrait({ id, expr = "normal", className, flip }: { id: string; expr?: Expr; className?: string; flip?: boolean }) {
+  const [failedFor, setFailedFor] = useState<string | null>(null);
+  const ch = CHARACTER_BY_ID[id];
+  const src = `/portraits/${id}.jpg`;
+  const failed = failedFor === id;
+  if (!failed && ch) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        key={id}
+        src={src}
+        alt={ch.name}
+        className={cn("object-cover object-top", className)}
+        style={flip ? { transform: "scaleX(-1)" } : undefined}
+        onError={() => setFailedFor(id)}
+        draggable={false}
+      />
+    );
+  }
+  return <SvgBust id={id} expr={expr} className={className} flip={flip} />;
 }

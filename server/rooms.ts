@@ -440,7 +440,7 @@ const msgSchema = z.discriminatedUnion("t", [
   z.object({ t: z.literal("lobby.start") }),
   z.object({ t: z.literal("queue.join"), teamId: z.number().int().positive().nullable() }),
   z.object({ t: z.literal("queue.leave") }),
-  z.object({ t: z.literal("in"), b: z.number().int().min(0).max(63) }),
+  z.object({ t: z.literal("in"), b: z.number().int().min(0).max(127) }),
   z.object({ t: z.literal("match.leave") }),
 ]);
 

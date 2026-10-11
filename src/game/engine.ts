@@ -3,6 +3,7 @@
  * Only + - * / and Math.sqrt/min/max/abs/floor/imul are used so a replay on
  * the server produces bit-identical results to what the player saw.
  */
+import { SKILLS, type AbilityEffect } from "@/shared/catalog";
 import type { BallState, GState, MatchConfig, MatchEvent, MatchState, PState } from "./types";
 
 export const TICK_RATE = 60;
@@ -17,7 +18,7 @@ export const PR = 15;
 export const BR = 7;
 export const GR = 26;
 
-export const IN = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, SHOOT: 16, PASS: 32 } as const;
+export const IN = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, SHOOT: 16, PASS: 32, ABILITY: 64 } as const;
 
 const FORMATIONS: [number, number][][] = [
   [],
@@ -98,7 +99,59 @@ function newPlayer(): PState {
     aiMode: 0,
     prevShoot: false,
     prevPass: false,
+    prevAbility: false,
+    abilityT: 0,
+    abilityCd: 0,
   };
+}
+
+function skillOf(cfg: MatchConfig, i: number) {
+  return SKILLS[cfg.players[i].skillId] ?? SKILLS.none;
+}
+
+function activeEffect(s: MatchState, cfg: MatchConfig, i: number): AbilityEffect | null {
+  if (s.players[i].abilityT <= 0) return null;
+  return skillOf(cfg, i).ability.effect;
+}
+
+function activateAbility(s: MatchState, cfg: MatchConfig, i: number) {
+  const p = s.players[i];
+  if (p.abilityCd > 0 || p.stun > 0 || s.phase !== 0) return;
+  const skill = skillOf(cfg, i);
+  const ab = skill.ability;
+  p.abilityT = Math.max(1, Math.floor(ab.durationSec * TICK_RATE));
+  p.abilityCd = Math.max(p.abilityT, Math.floor(ab.cooldownSec * TICK_RATE));
+  s.events.push({ t: "ability", p: i, skillId: skill.id });
+
+  const effect = ab.effect;
+  if (effect === "shot" && s.ball.owner === i) p.charge = 1;
+  if (effect === "steal") {
+    const b = s.ball;
+    const dx = b.x - p.x;
+    const dy = b.y - p.y;
+    const d = len(dx, dy);
+    if (b.owner < 0 && d < 70) {
+      b.owner = i;
+      b.vx = b.vy = 0;
+      b.lastTouch = i;
+      b.lastSide = cfg.players[i].side;
+    } else if (b.owner >= 0 && b.owner < 100 && cfg.players[b.owner].side !== cfg.players[i].side && d < 48) {
+      b.owner = i;
+      b.vx = b.vy = 0;
+      b.lastTouch = i;
+      b.lastSide = cfg.players[i].side;
+    }
+  }
+  if (effect === "tank") {
+    for (let j = 0; j < cfg.players.length; j++) {
+      if (cfg.players[j].side === cfg.players[i].side) continue;
+      const o = s.players[j];
+      if (len(o.x - p.x, o.y - p.y) < 70) {
+        o.stun = Math.max(o.stun, 28);
+        o.speed *= 0.2;
+      }
+    }
+  }
 }
 
 function newGoalie(side: number): GState {
@@ -207,10 +260,11 @@ function shoot(s: MatchState, cfg: MatchConfig, i: number, charge: number, aimX?
       dy = dy * 0.75 + gy * 0.25;
     }
   }
-  const noise = (rnd(s) - 0.5) * (1 - st.accuracy) * 0.5 * (0.6 + charge * 0.6);
+  const noise = (rnd(s) - 0.5) * (1 - st.accuracy) * 0.5 * (0.6 + charge * 0.6) * (activeEffect(s, cfg, i) === "shot" ? 0.45 : 1);
   dx += -dy * noise;
   dy += dx * noise;
-  const speed = st.shotPower * (0.45 + 0.55 * charge) * cfg.tempo;
+  const shotMul = activeEffect(s, cfg, i) === "shot" ? 1.28 : 1;
+  const speed = st.shotPower * (0.45 + 0.55 * charge) * cfg.tempo * shotMul;
   kick(s, cfg, i, dx, dy, speed);
   s.stats[i].shots++;
   s.events.push({ t: "shot", p: i, power: charge });
@@ -293,13 +347,40 @@ function move(s: MatchState, cfg: MatchConfig, i: number, dx: number, dy: number
     p.vy = p.hy * p.speed;
     return;
   }
+  const fx = activeEffect(s, cfg, i);
+  let speedMul = 1;
+  let accelMul = 1;
+  if (fx === "burst") {
+    speedMul = 1.38;
+    accelMul = 1.45;
+  } else if (fx === "ignite") {
+    speedMul = 1.2;
+    accelMul = 1.7;
+  } else if (fx === "dribble") {
+    speedMul = 1.12;
+    accelMul = 1.2;
+  } else if (fx === "shot") {
+    speedMul = 1.08;
+  } else if (fx === "vision" || fx === "pass") {
+    accelMul = 1.15;
+  }
+  // Metavision / vision slows nearby opponents.
+  if (fx !== "vision") {
+    for (let j = 0; j < cfg.players.length; j++) {
+      if (j === i || cfg.players[j].side === cfg.players[i].side) continue;
+      if (activeEffect(s, cfg, j) === "vision" && len(s.players[j].x - p.x, s.players[j].y - p.y) < 160) {
+        speedMul *= 0.58;
+        break;
+      }
+    }
+  }
   const mag = Math.min(1, len(dx, dy));
   const carrying = s.ball.owner === i;
   if (mag > 0.05) {
     const ux = dx / (len(dx, dy) || 1);
     const uy = dy / (len(dx, dy) || 1);
     const dot = p.hx * ux + p.hy * uy;
-    const t = Math.min(1, st.turnRate * DT);
+    const t = Math.min(1, st.turnRate * DT * (fx === "dribble" ? 1.35 : 1));
     let nhx = p.hx + (ux - p.hx) * t;
     let nhy = p.hy + (uy - p.hy) * t;
     let hl = len(nhx, nhy);
@@ -311,8 +392,8 @@ function move(s: MatchState, cfg: MatchConfig, i: number, dx: number, dy: number
     p.hx = nhx / hl;
     p.hy = nhy / hl;
     p.speed -= p.speed * (1 - dot) * 1.7 * DT;
-    const cap = st.topSpeed * cfg.tempo * mag * (carrying ? 0.92 : 1);
-    if (p.speed < cap) p.speed = Math.min(cap, p.speed + st.accel * cfg.tempo * DT);
+    const cap = st.topSpeed * cfg.tempo * mag * (carrying ? 0.92 : 1) * speedMul;
+    if (p.speed < cap) p.speed = Math.min(cap, p.speed + st.accel * cfg.tempo * accelMul * DT);
     else p.speed = Math.max(cap, p.speed - 600 * DT);
   } else {
     p.speed = Math.max(0, p.speed - 520 * DT);
@@ -671,6 +752,7 @@ function steals(s: MatchState, cfg: MatchConfig) {
   const ci = b.owner;
   const c = s.players[ci];
   const cs = cfg.players[ci].stats;
+  if (activeEffect(s, cfg, ci) === "dribble") return;
   for (let i = 0; i < cfg.players.length; i++) {
     if (cfg.players[i].side === cfg.players[ci].side) continue;
     const o = s.players[i];
@@ -678,8 +760,9 @@ function steals(s: MatchState, cfg: MatchConfig) {
     const d = len(o.x - c.x, o.y - c.y);
     const os = cfg.players[i].stats;
     let chance = 0;
-    if (o.tackleT > 0 && d < PR * 2.6) chance = (0.5 * (0.4 + os.tackle)) / (0.4 + cs.control);
-    else if (d < PR * 2 + 5) chance = ((0.012 * (0.5 + os.tackle)) / (0.5 + cs.control)) * (os.mass / cs.mass);
+    const stealBoost = activeEffect(s, cfg, i) === "steal" || activeEffect(s, cfg, i) === "vision" ? 1.8 : 1;
+    if (o.tackleT > 0 && d < PR * 2.6) chance = ((0.5 * (0.4 + os.tackle)) / (0.4 + cs.control)) * stealBoost;
+    else if (d < PR * 2 + 5) chance = ((0.012 * (0.5 + os.tackle)) / (0.5 + cs.control)) * (os.mass / cs.mass) * stealBoost;
     if (chance > 0 && rnd(s) < chance) {
       b.owner = i;
       b.lastTouch = i;
@@ -762,6 +845,8 @@ export function step(s: MatchState, cfg: MatchConfig, inputs: ArrayLike<number>)
     if (p.tackleCd > 0) p.tackleCd--;
     if (p.tackleT > 0) p.tackleT--;
     if (p.stun > 0) p.stun--;
+    if (p.abilityT > 0) p.abilityT--;
+    if (p.abilityCd > 0) p.abilityCd--;
     let dx = 0;
     let dy = 0;
     if (def.human >= 0) {
@@ -776,9 +861,12 @@ export function step(s: MatchState, cfg: MatchConfig, inputs: ArrayLike<number>)
       }
       const shootHeld = (bits & IN.SHOOT) !== 0;
       const passHeld = (bits & IN.PASS) !== 0;
+      const abilityHeld = (bits & IN.ABILITY) !== 0;
+      if (abilityHeld && !p.prevAbility) activateAbility(s, cfg, i);
       if (s.ball.owner === i) {
+        const chargeMul = activeEffect(s, cfg, i) === "shot" ? 3 : 1;
         if (shootHeld) {
-          p.charge = p.charge < 0 ? 0 : Math.min(1, p.charge + def.stats.chargeRate * DT);
+          p.charge = p.charge < 0 ? 0 : Math.min(1, p.charge + def.stats.chargeRate * chargeMul * DT);
         } else if (p.prevShoot && p.charge >= 0) {
           shoot(s, cfg, i, p.charge);
           p.charge = -1;
@@ -790,8 +878,19 @@ export function step(s: MatchState, cfg: MatchConfig, inputs: ArrayLike<number>)
       }
       p.prevShoot = shootHeld;
       p.prevPass = passHeld;
+      p.prevAbility = abilityHeld;
     } else {
       [dx, dy] = botThink(s, cfg, i);
+      // Bots fire abilities near the box or when contesting the ball.
+      if (p.abilityCd === 0 && rnd(s) < 0.012) {
+        const goalX = def.side === 0 ? W : 0;
+        const nearGoal = Math.abs(p.x - goalX) < 320;
+        const hasBall = s.ball.owner === i;
+        const contest = s.ball.owner >= 0 && s.ball.owner < 100 && cfg.players[s.ball.owner].side !== def.side && len(s.ball.x - p.x, s.ball.y - p.y) < 80;
+        if (hasBall && nearGoal) activateAbility(s, cfg, i);
+        else if (contest && (skillOf(cfg, i).ability.effect === "steal" || skillOf(cfg, i).ability.effect === "tank")) activateAbility(s, cfg, i);
+        else if (hasBall && rnd(s) < 0.35) activateAbility(s, cfg, i);
+      }
     }
     move(s, cfg, i, dx, dy);
     p.x += p.vx * DT;
@@ -859,7 +958,7 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 
 export function snapshot(s: MatchState): Snapshot {
   const p: number[] = [];
-  for (const q of s.players) p.push(r1(q.x), r1(q.y), r1(q.hx * 100) / 100, r1(q.hy * 100) / 100, r1(q.speed), r1(q.charge), q.stun, q.tackleT);
+  for (const q of s.players) p.push(r1(q.x), r1(q.y), r1(q.hx * 100) / 100, r1(q.hy * 100) / 100, r1(q.speed), r1(q.charge), q.stun, q.tackleT, q.abilityT);
   const g: number[] = [];
   for (const q of s.goalies) g.push(r1(q.x), r1(q.y), q.hold, r1(q.dive));
   const b = s.ball;
@@ -875,8 +974,9 @@ export function stateFromSnapshot(base: MatchState, a: Snapshot, bSnap: Snapshot
   s.phase = a.ph as 0 | 1 | 3;
   s.phaseT = a.pt;
   s.score = [a.sc[0], a.sc[1]];
+  const stride = a.p.length >= s.players.length * 9 ? 9 : 8;
   for (let i = 0; i < s.players.length; i++) {
-    const o = i * 8;
+    const o = i * stride;
     const q = s.players[i];
     const nb = bSnap && bSnap.p.length === a.p.length ? bSnap.p : a.p;
     q.x = lerp(a.p[o], nb[o]);
@@ -887,6 +987,7 @@ export function stateFromSnapshot(base: MatchState, a: Snapshot, bSnap: Snapshot
     q.charge = a.p[o + 5];
     q.stun = a.p[o + 6];
     q.tackleT = a.p[o + 7];
+    q.abilityT = stride === 9 ? a.p[o + 8] : 0;
     q.vx = q.hx * q.speed;
     q.vy = q.hy * q.speed;
   }

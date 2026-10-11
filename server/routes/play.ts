@@ -123,7 +123,7 @@ function decodeInputs(b64: string, maxTicks: number) {
   for (let i = 0; i < raw.length; i += 2) {
     const v = raw[i];
     const n = raw[i + 1];
-    if (v > 63 || n === 0) fail(400, "Malformed input log");
+    if (v > 127 || n === 0) fail(400, "Malformed input log");
     if (t + n > maxTicks) fail(400, "Input log longer than the match");
     out.fill(v, t, t + n);
     t += n;

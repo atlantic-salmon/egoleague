@@ -152,6 +152,15 @@ export function ItemDetail({
                 <div className="mt-1 text-xs text-blue-200">
                   <span className="font-semibold">{item.skill.name}:</span> {item.skill.desc}
                 </div>
+                {(item.skill.ability) && (
+                  <div className="mt-2 rounded bg-cyan-500/10 px-2 py-1.5 text-xs text-cyan-100">
+                    <span className="font-heading uppercase tracking-wide text-cyan-300">{item.skill.ability.title}</span>
+                    <span className="ml-2 text-slate-400">
+                      Q · {item.skill.ability.cooldownSec}s CD · {item.skill.ability.durationSec}s
+                    </span>
+                    <div className="mt-0.5 italic text-slate-300">&ldquo;{item.skill.ability.line}&rdquo;</div>
+                  </div>
+                )}
               </div>
             ) : (
               <GearInfo item={item} all={all} />

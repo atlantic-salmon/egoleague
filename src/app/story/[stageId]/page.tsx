@@ -209,7 +209,7 @@ function Stage({ stageId }: { stageId: string }) {
               {status && <span className="rounded-full bg-amber-500/15 px-3 py-1 text-amber-200">Best: {status.stars}/3 stars</span>}
             </div>
             <div className="mt-4 text-xs text-slate-400">
-              Controls: {CONTROL_HELP.solo.move} to move · {CONTROL_HELP.solo.shoot} (hold to charge, tackle without the ball) · {CONTROL_HELP.solo.pass} to pass
+              Controls: {CONTROL_HELP.solo.move} to move · {CONTROL_HELP.solo.shoot} (hold to charge, tackle without the ball) · {CONTROL_HELP.solo.pass} to pass · {CONTROL_HELP.solo.ability} for your ability
             </div>
           </div>
           <div className="flex items-end gap-2">

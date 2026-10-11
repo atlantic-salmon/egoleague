@@ -17,8 +17,9 @@ const MAPS: Record<Scheme, Record<string, number>> = {
     KeyE: IN.PASS,
     KeyK: IN.PASS,
     ShiftLeft: IN.PASS,
+    KeyQ: IN.ABILITY,
   },
-  p1: { KeyW: IN.UP, KeyS: IN.DOWN, KeyA: IN.LEFT, KeyD: IN.RIGHT, Space: IN.SHOOT, KeyE: IN.PASS },
+  p1: { KeyW: IN.UP, KeyS: IN.DOWN, KeyA: IN.LEFT, KeyD: IN.RIGHT, Space: IN.SHOOT, KeyE: IN.PASS, KeyQ: IN.ABILITY },
   p2: {
     ArrowUp: IN.UP,
     ArrowDown: IN.DOWN,
@@ -28,13 +29,14 @@ const MAPS: Record<Scheme, Record<string, number>> = {
     NumpadEnter: IN.SHOOT,
     ShiftRight: IN.PASS,
     Slash: IN.PASS,
+    KeyU: IN.ABILITY,
   },
 };
 
-export const CONTROL_HELP: Record<Scheme, { move: string; shoot: string; pass: string }> = {
-  solo: { move: "WASD / Arrows", shoot: "Space / J (hold to charge)", pass: "E / K / Left Shift" },
-  p1: { move: "WASD", shoot: "Space (hold to charge)", pass: "E" },
-  p2: { move: "Arrow keys", shoot: "Enter (hold to charge)", pass: "Right Shift or /" },
+export const CONTROL_HELP: Record<Scheme, { move: string; shoot: string; pass: string; ability: string }> = {
+  solo: { move: "WASD / Arrows", shoot: "Space / J (hold to charge)", pass: "E / K / Left Shift", ability: "Q" },
+  p1: { move: "WASD", shoot: "Space (hold to charge)", pass: "E", ability: "Q" },
+  p2: { move: "Arrow keys", shoot: "Enter (hold to charge)", pass: "Right Shift or /", ability: "U" },
 };
 
 export class KeyboardInput {
@@ -96,6 +98,7 @@ function gamepadBits(slot: number) {
   if (ax > 0.4 || gp.buttons[15]?.pressed) b |= IN.RIGHT;
   if (gp.buttons[0]?.pressed || gp.buttons[7]?.pressed) b |= IN.SHOOT;
   if (gp.buttons[2]?.pressed || gp.buttons[1]?.pressed) b |= IN.PASS;
+  if (gp.buttons[3]?.pressed) b |= IN.ABILITY;
   return b;
 }
 
@@ -104,9 +107,9 @@ export function encodeInputLog(log: number[]) {
   const bytes: number[] = [];
   let i = 0;
   while (i < log.length) {
-    const v = log[i] & 63;
+    const v = log[i] & 127;
     let n = 1;
-    while (i + n < log.length && (log[i + n] & 63) === v && n < 255) n++;
+    while (i + n < log.length && (log[i + n] & 127) === v && n < 255) n++;
     bytes.push(v, n);
     i += n;
   }

@@ -1,10 +1,12 @@
 # Blue Lock: Egoist Pitch
 
-A 2D top-down football game inspired by Blue Lock. Play story mode through the manga, pull characters and gear from a gacha, build squads from players you own, and play locally or online. In every match the goalkeeper is the Blue Lock Man.
+A 2D top-down football game inspired by Blue Lock. Play story mode through the manga, pull characters and gear from a gacha, build squads from players you own, and play locally or online. In every match the goalkeeper is the Blue Lock Man — drawn as a human athlete like every other character, not a robot.
 
 ## Features
 
 - **Isagi's Path (story mode):** 8 stages across 4 chapters (First Selection, Second Selection, U-20 Japan, Neo Egoist League). Each stage has an objective, star ratings, first-clear rewards, and animated cutscenes before and after the match. Cutscenes include portraits, typewriter text, speed lines, Metavision, flashes and shakes.
+- **Abilities:** every skill has an activatable technique (Q / U / gamepad Y). Activating plays a short on-screen cutscene with your portrait, ability title and FX (Metavision grid, speed lines, impact flash, etc.), then applies a timed effect such as a speed burst, untackleable dribble, forced charged shot, ball steal or opponent stun.
+- **Character portraits:** each character (including Blue Lock Man and Ego) has an AI-generated profile image under `public/portraits/`. The UI uses those images and falls back to the vector bust if a file is missing.
 - **Movement:** there is no sprint key. Players wind up to top speed over time. How fast depends on the character's Acceleration, and sharp turns bleed momentum based on Agility. Hold shoot to charge a shot. Pressing shoot without the ball is a tackle.
 - **Blue Lock Man goalkeeper:** an AI keeper that tracks the ball, dives, saves or parries shots, rushes out on through balls, and distributes the ball.
 - **Gacha with 8 rarities:** Common (C), Uncommon (UC), Rare (R), Epic (E), Mythic (M), Legendary (L), World Class (WC), #1.
@@ -49,11 +51,11 @@ The database is created automatically at `data/bluelock.db`. Delete that file to
 
 ## Controls
 
-| Scheme | Move | Shoot (hold to charge) / tackle | Pass |
+| Scheme | Move | Shoot (hold to charge) / tackle | Pass | Ability |
 | --- | --- | --- | --- |
-| Solo (story, online) | WASD or arrows | Space or J | E, K or Left Shift |
-| Local Player 1 | WASD | Space | E |
-| Local Player 2 | Arrow keys | Enter | Right Shift or / |
+| Solo (story, online) | WASD or arrows | Space or J | E, K or Left Shift | Q |
+| Local Player 1 | WASD | Space | E | Q |
+| Local Player 2 | Arrow keys | Enter | Right Shift or / | U |
 
 Gamepads work automatically. On touch screens an on-screen joystick appears. Press Esc or P to pause local matches.
 

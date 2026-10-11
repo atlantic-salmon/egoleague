@@ -16,6 +16,7 @@ export interface MatchPlayerDef {
   name: string;
   charId: string;
   variantId: string;
+  skillId: string;
   kit: string;
   side: 0 | 1;
   stats: PhysStats;
@@ -60,6 +61,11 @@ export interface PState {
   aiMode: number;
   prevShoot: boolean;
   prevPass: boolean;
+  prevAbility: boolean;
+  /** Remaining ticks of an active ability. */
+  abilityT: number;
+  /** Remaining ticks until the ability can be used again. */
+  abilityCd: number;
 }
 
 export interface GState {
@@ -94,6 +100,7 @@ export type MatchEvent =
   | { t: "tackle"; p: number; victim: number }
   | { t: "kick"; x: number; y: number }
   | { t: "post"; x: number; y: number }
+  | { t: "ability"; p: number; skillId: string }
   | { t: "kickoff" }
   | { t: "end" };
 

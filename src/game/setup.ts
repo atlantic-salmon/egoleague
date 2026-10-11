@@ -27,6 +27,7 @@ export function makePlayerDef(
     name: nameOverride ?? ch.name.split(" ")[0],
     charId: vd.characterId,
     variantId: vd.id,
+    skillId: vd.skill,
     kit: vd.kit,
     side,
     stats: toPhysics(ratings, t),
