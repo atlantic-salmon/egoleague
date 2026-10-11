@@ -80,7 +80,8 @@ export class KeyboardInput {
     }
     if (slot === 0) b |= this.touchBits;
     b |= gamepadBits(slot);
-    return b & 63;
+    // Keep all action bits including ABILITY (64). Masking with 63 stripped Q.
+    return b & 127;
   }
 }
 

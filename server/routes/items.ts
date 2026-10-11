@@ -45,7 +45,12 @@ function pickTemplate(bannerId: string, rarity: Rarity) {
   }
   const featured = VARIANTS.filter((v) => v.rarity === rarity && b.featured.includes(v.id));
   if (featured.length && rand01() < T.gacha.featuredShare) return featured[crypto.randomInt(0, featured.length)].id;
-  const opts = VARIANTS.filter((v) => v.rarity === rarity);
+  // Mythic+ are unique named versions only (never Base).
+  let opts = VARIANTS.filter((v) => v.rarity === rarity);
+  if (rarityIndex(rarity) >= rarityIndex("M")) {
+    const unique = opts.filter((v) => v.label !== "Base");
+    if (unique.length) opts = unique;
+  }
   return opts[crypto.randomInt(0, opts.length)].id;
 }
 

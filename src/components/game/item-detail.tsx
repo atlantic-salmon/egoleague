@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Portrait } from "./portrait";
-import { GearIcon, RarityBadge, RollBar } from "./item-card";
+import { GearArt, GearIcon, RarityBadge, RollBar } from "./item-card";
 import { TraitChips } from "./trait-chips";
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
@@ -143,7 +143,7 @@ export function ItemDetail({
             {item.kind === "char" ? (
               <Portrait id={item.characterId} expr="ego" className="h-full w-full" />
             ) : (
-              <GearIcon slot={item.slot} className="mb-10 size-20" style={{ color: r.color }} />
+              <GearArt templateId={item.templateId} slot={item.slot} rarity={item.rarity} className="mb-4 h-28 w-28" />
             )}
           </div>
           <div className="space-y-3">

@@ -55,8 +55,8 @@ export function traitCountRange(rarity: Rarity): [number, number] {
     UC: [0, 2],
     R: [1, 2],
     E: [1, 3],
-    M: [2, 3],
-    L: [2, 4],
+    L: [2, 3],
+    M: [2, 4],
     WC: [3, 5],
     N1: [3, 5],
   };

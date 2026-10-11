@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { Lock, Footprints, Crown, Shirt, Sparkle } from "lucide-react";
-import { RARITY_INFO, type Rarity } from "@/shared/rarity";
+import { RARITY_INFO, isMythicPlus, type Rarity } from "@/shared/rarity";
 import { Portrait } from "./portrait";
 import { TraitChips } from "./trait-chips";
 import type { Item } from "@/lib/types";
@@ -10,21 +11,23 @@ import type { GearSlot } from "@/shared/catalog";
 
 export function RarityBadge({ rarity, className }: { rarity: Rarity; className?: string }) {
   const r = RARITY_INFO[rarity];
-  // Legendary shows a color chip with no letter/tier mark.
-  if (!r.short) {
+  if (r.rainbow) {
     return (
       <span
-        className={cn("inline-flex size-5 items-center justify-center rounded", className)}
-        style={{ background: r.color, boxShadow: `0 0 10px ${r.glow}` }}
+        className={cn(
+          "rarity-rainbow inline-flex items-center rounded px-1.5 py-0.5 font-heading text-[11px] uppercase tracking-wider text-slate-950",
+          className,
+        )}
         title={r.label}
-        aria-label={r.label}
-      />
+      >
+        {r.short}
+      </span>
     );
   }
   return (
     <span
       className={cn("inline-flex items-center rounded px-1.5 py-0.5 font-heading text-[11px] uppercase tracking-wider text-slate-950", className)}
-      style={{ background: r.color }}
+      style={{ background: r.color, boxShadow: `0 0 10px ${r.glow}` }}
       title={r.label}
     >
       {r.short}
@@ -35,6 +38,34 @@ export function RarityBadge({ rarity, className }: { rarity: Rarity; className?:
 export function GearIcon({ slot, className, style }: { slot: GearSlot; className?: string; style?: React.CSSProperties }) {
   const I = slot === "boots" ? Footprints : slot === "band" ? Crown : Shirt;
   return <I className={className} style={style} />;
+}
+
+export function GearArt({
+  templateId,
+  slot,
+  rarity,
+  className,
+}: {
+  templateId: string;
+  slot: GearSlot;
+  rarity: Rarity;
+  className?: string;
+}) {
+  const [failed, setFailed] = useState(false);
+  const r = RARITY_INFO[rarity];
+  if (failed) {
+    return <GearIcon slot={slot} className={className} style={{ color: r.color }} />;
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/gear/${templateId}.png`}
+      alt=""
+      className={cn("object-contain", className)}
+      draggable={false}
+      onError={() => setFailed(true)}
+    />
+  );
 }
 
 export function RollBar({ label, value }: { label: string; value: number }) {
@@ -66,7 +97,8 @@ export function ItemCard({
   footer?: React.ReactNode;
 }) {
   const r = RARITY_INFO[item.rarity];
-  const high = ["L", "WC", "N1"].includes(item.rarity);
+  const high = isMythicPlus(item.rarity) || item.rarity === "L" || item.rarity === "WC" || item.rarity === "N1";
+  const rainbow = !!r.rainbow;
   return (
     <div
       role={onClick ? "button" : undefined}
@@ -82,18 +114,34 @@ export function ItemCard({
         "group relative flex flex-col overflow-hidden rounded-xl border bg-slate-900/90 text-left transition",
         onClick && "cursor-pointer hover:-translate-y-0.5 focus-visible:outline-2",
         selected && "ring-2 ring-blue-400",
+        rainbow && "border-transparent",
       )}
-      style={{ borderColor: r.color, boxShadow: `0 0 ${high ? 26 : 12}px -6px ${r.glow}` }}
+      style={
+        rainbow
+          ? {
+              boxShadow: `0 0 28px -6px ${r.glow}`,
+              backgroundImage:
+                "linear-gradient(#0f172a,#0f172a), linear-gradient(90deg,#ef4444,#f97316,#eab308,#22c55e,#06b6d4,#3b82f6,#a855f7,#ef4444)",
+              backgroundOrigin: "border-box",
+              backgroundClip: "padding-box, border-box",
+              borderWidth: 2,
+            }
+          : { borderColor: r.color, boxShadow: `0 0 ${high ? 26 : 12}px -6px ${r.glow}` }
+      }
     >
       <div
         className={cn("relative flex items-end justify-center overflow-hidden", compact ? "h-24" : "h-32", high && "shimmer")}
-        style={{ background: `radial-gradient(circle at 50% 30%, ${r.glow}, transparent 70%), linear-gradient(180deg, #0f172a, #020617)` }}
+        style={{
+          background: rainbow
+            ? "linear-gradient(180deg, rgba(249,115,22,0.25), transparent 55%), linear-gradient(180deg, #0f172a, #020617)"
+            : `radial-gradient(circle at 50% 30%, ${r.glow}, transparent 70%), linear-gradient(180deg, #0f172a, #020617)`,
+        }}
       >
         {item.kind === "char" ? (
           <Portrait id={item.characterId} expr={high ? "ego" : "normal"} className={cn("h-full", compact ? "w-24" : "w-32")} />
         ) : (
           <div className="flex h-full items-center justify-center">
-            <GearIcon slot={item.slot} className={cn(compact ? "size-10" : "size-14")} style={{ color: r.color }} />
+            <GearArt templateId={item.templateId} slot={item.slot} rarity={item.rarity} className={cn(compact ? "h-16 w-16" : "h-24 w-24")} />
           </div>
         )}
         <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
@@ -106,6 +154,9 @@ export function ItemCard({
         </div>
         <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
           {item.kind === "char" && <span className="rounded bg-slate-950/80 px-1.5 font-heading text-lg leading-tight text-white">{item.ovr}</span>}
+          {item.kind === "gear" && (
+            <span className="rounded bg-slate-950/80 px-1.5 font-heading text-sm leading-tight text-white">Q{item.quality}</span>
+          )}
           {item.locked && (
             <span className="rounded bg-amber-500/90 p-0.5 text-slate-950" title="Locked in a trade or listing">
               <Lock className="size-3" />

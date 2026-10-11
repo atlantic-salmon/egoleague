@@ -166,7 +166,7 @@ export function estimateValue(
 
 export function levelUpCost(level: number, rarity: Rarity, t: Tuning = DEFAULT_TUNING) {
   const pr = t.progression;
-  const rIdx = ["C", "UC", "R", "E", "M", "L", "WC", "N1"].indexOf(rarity);
+  const rIdx = ["C", "UC", "R", "E", "L", "M", "WC", "N1"].indexOf(rarity);
   const gems = Math.round(pr.levelUpGemBase * Math.pow(pr.levelUpGemGrowth, level - 1) * (1 + rIdx * 0.3));
   return { gems };
 }

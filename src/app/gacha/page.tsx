@@ -32,7 +32,7 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   const info = RARITY_INFO[best];
   const [stage, setStage] = useState<"orb" | "cards">("orb");
   const [shown, setShown] = useState(0);
-  const high = rarityIndex(best) >= rarityIndex("L");
+  const high = rarityIndex(best) >= rarityIndex("M");
 
   useEffect(() => {
     uiBlip("pull");
@@ -43,8 +43,8 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   useEffect(() => {
     if (stage !== "cards" || shown >= items.length) return;
     const it = items[shown];
-    uiBlip(rarityIndex(it.rarity) >= rarityIndex("L") ? "rare" : "reveal");
-    const t = setTimeout(() => setShown((n) => n + 1), rarityIndex(it.rarity) >= rarityIndex("L") ? 520 : 170);
+    uiBlip(rarityIndex(it.rarity) >= rarityIndex("M") ? "rare" : "reveal");
+    const t = setTimeout(() => setShown((n) => n + 1), rarityIndex(it.rarity) >= rarityIndex("M") ? 520 : 170);
     return () => clearTimeout(t);
   }, [stage, shown, items]);
 
@@ -166,6 +166,7 @@ function RatesDialog({ open, onOpenChange, cfg, banner }: { open: boolean; onOpe
         <ul className="list-disc space-y-1 pl-5 text-xs text-slate-400">
           <li>Players roll Talent; gear rolls Quality. Rolls are permanent and never rerolled.</li>
           <li>Characters can roll up to 5 unique mutations (+ or −) that permanently buff or nerf stats. Higher rarities roll more.</li>
+          <li>Order: C → UC → R → E → Legendary → Mythic → World Class → #1. Mythic and above are unique named versions.</li>
           <li>Legendary or better is guaranteed within {banner.pity.hardL} pulls. #1 is guaranteed within {banner.pity.hardN1} pulls.</li>
           <li>Every 10-pull includes at least one Rare or better.</li>
           {banner.featured.length > 0 && (
@@ -286,7 +287,7 @@ function Gacha() {
             {banner.kind === "gear" ? (
               <div className="grid h-full place-items-center">
                 <div className="grid grid-cols-3 gap-3">
-                  {(["N1", "WC", "L"] as Rarity[]).map((r) => (
+                  {(["N1", "WC", "M", "L"] as Rarity[]).map((r) => (
                     <div key={r} className="grid size-20 place-items-center rounded-2xl border" style={{ borderColor: RARITY_INFO[r].color, boxShadow: `0 0 30px -4px ${RARITY_INFO[r].glow}` }}>
                       <span className="font-heading text-2xl" style={{ color: RARITY_INFO[r].color }}>
                         {RARITY_INFO[r].short}

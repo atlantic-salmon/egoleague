@@ -49,7 +49,7 @@ const tiles = [
   { href: "/story", label: "Isagi's Path", desc: "Story mode through the manga arcs, with cutscenes.", icon: BookOpen, color: "from-blue-600 to-indigo-700" },
   { href: "/league", label: "League", desc: "Climb escalating teams. Replay any unlocked side.", icon: Medal, color: "from-amber-500 to-orange-700" },
   { href: "/play", label: "Play", desc: "Local 2P, friendly lobbies, ranked and ghost matches.", icon: Gamepad2, color: "from-emerald-600 to-teal-700" },
-  { href: "/gacha", label: "Gacha", desc: "8 rarities from Common to #1. Characters and gear.", icon: Sparkles, color: "from-fuchsia-600 to-purple-700" },
+  { href: "/gacha", label: "Gacha", desc: "C → UC → R → E → L → M → WC → #1. Unique Mythic+ versions.", icon: Sparkles, color: "from-fuchsia-600 to-purple-700" },
   { href: "/teams", label: "Teams", desc: "Build lineups from players you've unlocked.", icon: Users, color: "from-sky-600 to-blue-700" },
   { href: "/market", label: "Market", desc: "Buy and sell players and gear for gems.", icon: Store, color: "from-cyan-600 to-blue-700" },
   { href: "/quests", label: "Quests", desc: "Daily and lifetime goals for gems.", icon: ScrollText, color: "from-rose-600 to-red-700" },

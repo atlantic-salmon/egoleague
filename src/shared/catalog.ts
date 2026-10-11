@@ -339,31 +339,40 @@ export const VARIANTS: VariantDef[] = [
   v("rin", "base", "Base", "E", "playmaker", "destroyer", BL),
   v("otoya", "barcha", "FC Barcha", "E", "explosive", "ignition", BARCHA),
   v("yukimiya", "ubers", "Ubers", "E", "dribbler", "monster", UBERS),
-  // Mythic
-  v("bachira", "barcha", "FC Barcha", "M", "dribbler", "monster", BARCHA),
-  v("reo", "manshine", "Manshine City", "M", "playmaker", "chameleon", MANSHINE),
-  v("hiori", "bastard", "Bastard München", "M", "playmaker", "metavision", BM),
-  v("karasu", "pxg", "Paris X Gen", "M", "playmaker", "destroyer", PXG),
-  v("kunigami", "ace", "Wild Card Ace", "M", "tank", "wildcard", "#334155"),
-  // Legendary
+  // Legendary (below Mythic)
   v("isagi", "bastard", "Bastard München", "L", "allround", "devour", BM),
   v("chigiri", "manshine", "Manshine City", "L", "slowburn", "sprinter", MANSHINE),
   v("nagi", "u20", "U-20", "L", "striker", "trap", U20),
   v("barou", "ubers", "Ubers", "L", "tank", "king", UBERS),
   v("rin", "u20", "U-20", "L", "playmaker", "destroyer", U20),
   v("shidou", "u20", "U-20", "L", "explosive", "direct", U20),
-  // World Class
+  v("kunigami", "ace", "Wild Card Ace", "L", "tank", "wildcard", "#334155"),
+  v("reo", "manshine", "Manshine City", "L", "playmaker", "chameleon", MANSHINE),
+  // Mythic — unique named versions only (no Base)
+  v("bachira", "barcha", "FC Barcha Ace", "M", "dribbler", "monster", BARCHA),
+  v("hiori", "bastard", "Blue Heart", "M", "playmaker", "metavision", BM),
+  v("karasu", "pxg", "Crow Strategist", "M", "playmaker", "destroyer", PXG),
+  v("yukimiya", "street", "Street Dribbler", "M", "dribbler", "monster", UBERS),
+  v("otoya", "sniper", "Sniper Form", "M", "explosive", "ignition", BARCHA),
+  v("kurona", "shark", "Shark Link", "M", "explosive", "ignition", BM),
+  v("raichi", "ignite", "Blood Boil", "M", "explosive", "ignition", BL),
+  v("aryu", "form", "Aesthetic Wall", "M", "tank", "wildcard", UBERS),
+  // World Class — unique versions
   v("isagi", "meta", "Metavision Awakened", "WC", "playmaker", "metavision", BM),
-  v("nagi", "manshine", "Manshine City", "WC", "striker", "trap", MANSHINE),
-  v("rin", "pxg", "Paris X Gen", "WC", "striker", "destroyer", PXG),
+  v("nagi", "manshine", "Genius Trap", "WC", "striker", "trap", MANSHINE),
+  v("rin", "pxg", "Destroyer Mode", "WC", "striker", "destroyer", PXG),
   v("sae", "u20", "U-20 Captain", "WC", "playmaker", "prodigy", U20),
-  v("kaiser", "bastard", "Bastard München", "WC", "striker", "emperor", BM),
-  v("shidou", "pxg", "Paris X Gen", "WC", "explosive", "direct", PXG),
-  // #1
+  v("kaiser", "bastard", "Emperor Impact", "WC", "striker", "emperor", BM),
+  v("shidou", "pxg", "Demon Wing", "WC", "explosive", "direct", PXG),
+  v("bachira", "monsterwc", "True Monster", "WC", "dribbler", "monster", BARCHA),
+  v("barou", "kingwc", "King of the Pitch", "WC", "tank", "king", UBERS),
+  // #1 — unique apex versions
   v("isagi", "n1", "World's #1 Egoist", "N1", "allround", "ego", "#0b1220"),
   v("rin", "n1", "Awakened Monster", "N1", "striker", "ego", "#052e2b"),
-  v("sae", "n1", "Prodigy", "N1", "playmaker", "prodigy", "#3f0d12"),
-  v("kaiser", "n1", "Emperor", "N1", "striker", "emperor", "#1e1b4b"),
+  v("sae", "n1", "Prodigy Apex", "N1", "playmaker", "prodigy", "#3f0d12"),
+  v("kaiser", "n1", "Blue Rose Emperor", "N1", "striker", "emperor", "#1e1b4b"),
+  v("nagi", "n1", "Lazy Genius #1", "N1", "striker", "trap", "#0c4a6e"),
+  v("shidou", "n1", "World's Demon", "N1", "explosive", "direct", "#4c0519"),
 ];
 
 export const VARIANT_BY_ID: Record<string, VariantDef> = Object.fromEntries(VARIANTS.map((x) => [x.id, x]));

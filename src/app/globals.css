@@ -173,9 +173,30 @@
   animation: shimmer 2.4s ease-in-out infinite;
 }
 
+@keyframes rainbow-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 200% 50%;
+  }
+}
+
+.rarity-rainbow {
+  background-image: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444);
+  background-size: 200% 100%;
+  animation: rainbow-shift 2.8s linear infinite;
+  color: #0f172a;
+}
+
+.border-rainbow {
+  border-image: linear-gradient(90deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444) 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .speedlines,
-  .shimmer::after {
+  .shimmer::after,
+  .rarity-rainbow {
     animation: none;
   }
 }

@@ -12,11 +12,11 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
 - **Movement:** there is no sprint key. Players wind up to top speed over time. How fast depends on the character's Acceleration, and sharp turns bleed momentum based on Agility. Hold shoot to charge a shot. Pressing shoot without the ball is a tackle.
 - **Match HUD:** a translucent bottom-left panel shows shoot, tackle, and ability cooldowns for your controlled player.
 - **Blue Lock Man goalkeeper:** a compact AI keeper that tracks the ball, dives, saves or parries shots, rushes out on through balls, and distributes the ball.
-- **Gacha with 8 rarities:** Common (C), Uncommon (UC), Rare (R), Epic (E), Mythic (M), Legendary (L), World Class (WC), #1.
-  - Characters come in several versions, such as Isagi (Base), Isagi (Team Z) and Isagi (Bastard München).
-  - Gear (boots, headband, jersey) uses the same rarities. World Class and #1 gear have unique names, such as *Metavision Lens* and *Crown of the Striker*.
+- **Gacha with 8 rarities:** Common (C), Uncommon (UC), Rare (R), Epic (E), Legendary (L), Mythic (M), World Class (WC), #1.
+  - Characters come in several versions, such as Isagi (Base), Isagi (Team Z) and Isagi (Bastard München). Mythic and above are unique named versions only.
+  - Gear (boots, headband, jersey) uses the same rarities and has simple slot art under `public/gear/`. World Class and #1 gear have unique names, such as *Metavision Lens* and *Crown of the Striker*. World Class uses a rainbow badge/border.
   - Pity: Legendary or better is guaranteed within 70 pulls, and #1 within 500. Every 10-pull includes at least one Rare or better.
-- **Talent / Quality:** characters roll Talent only (scales all player stats). Gear rolls Quality only (scales gear boosts). Rolls are permanent and set grade (S–D) and market value. Legendary rarity shows a gold chip with no "L" letter.
+- **Talent / Quality:** characters roll Talent only (scales all player stats). Gear rolls Quality only (scales gear boosts). Rolls are permanent and set grade (S–D) and market value.
 - **Mutations:** gacha characters can roll up to 5 unique +/− traits that permanently buff or nerf stats. Starters have none. Traits are locked at create time like Talent.
 - **Teams:** save up to 8 lineups with formations. You can only use players you own, and a player that's locked in a trade or listing can't be used. Each team can include only one version of each character.
 - **Play modes:**

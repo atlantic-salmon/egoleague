@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import { SKILLS, type AbilityFx } from "@/shared/catalog";
 import { Portrait } from "./portrait";
@@ -63,39 +64,84 @@ function FxLayer({ fx }: { fx: AbilityFx[] }) {
   );
 }
 
-/** Ability banner: slides in from the left, holds, then exits off the right. */
+type Lane = "left" | "right" | "top" | "bottom";
+
+function pickLane(seed: number): Lane {
+  const lanes: Lane[] = ["left", "right", "top", "bottom"];
+  return lanes[Math.abs(seed) % lanes.length];
+}
+
+function motionFor(lane: Lane) {
+  // Land somewhere on screen, hold, then fly off the opposite side.
+  switch (lane) {
+    case "left":
+      return {
+        initial: { x: "-120%", y: "18%", opacity: 0.7 },
+        animate: { x: ["-120%", "8%", "8%", "130%"], y: ["18%", "18%", "22%", "10%"], opacity: [0.7, 1, 1, 0.85] },
+      };
+    case "right":
+      return {
+        initial: { x: "120%", y: "28%", opacity: 0.7 },
+        animate: { x: ["120%", "12%", "12%", "-130%"], y: ["28%", "24%", "30%", "40%"], opacity: [0.7, 1, 1, 0.85] },
+      };
+    case "top":
+      return {
+        initial: { x: "10%", y: "-120%", opacity: 0.7 },
+        animate: { x: ["10%", "14%", "18%", "40%"], y: ["-120%", "16%", "16%", "140%"], opacity: [0.7, 1, 1, 0.85] },
+      };
+    case "bottom":
+      return {
+        initial: { x: "20%", y: "140%", opacity: 0.7 },
+        animate: { x: ["20%", "10%", "6%", "-40%"], y: ["140%", "30%", "30%", "-120%"], opacity: [0.7, 1, 1, 0.85] },
+      };
+  }
+}
+
+/** Ability banner: lands at a random screen edge/lane, holds, then exits off-screen. */
 export function AbilityOverlay({ cue }: { cue: AbilityCue | null }) {
   const skill = cue ? SKILLS[cue.skillId] ?? SKILLS.none : null;
+  const lane = useMemo(() => (cue ? pickLane(cue.id * 17 + cue.charId.length * 3) : "left"), [cue]);
+  const path = useMemo(() => motionFor(lane), [lane]);
+
+  // Vary vertical/horizontal offset per cue so it doesn't always hit the same spot.
+  const offsetStyle = useMemo(() => {
+    if (!cue) return undefined;
+    const n = Math.abs((cue.id * 2654435761) % 1000) / 1000;
+    if (lane === "left" || lane === "right") return { top: `${10 + n * 45}%` };
+    return { left: `${4 + n * 40}%` };
+  }, [cue, lane]);
+
   return (
     <AnimatePresence>
       {cue && skill && (
         <motion.div
           key={cue.id}
-          className="pointer-events-none absolute inset-0 z-20 flex items-center overflow-hidden"
+          className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.15 }}
+          transition={{ duration: 0.12 }}
         >
-          <div className="absolute inset-0 bg-slate-950/45" />
+          <div className="absolute inset-0 bg-slate-950/35" />
           <FxLayer fx={skill.ability.fx} />
           <motion.div
-            className="relative flex w-[min(100%,52rem)] items-end gap-3 px-3 sm:gap-5 sm:px-6"
-            initial={{ x: "-110%", opacity: 0.85 }}
-            animate={{ x: ["-110%", "0%", "0%", "120%"], opacity: [0.85, 1, 1, 0.9] }}
-            transition={{ duration: 2.4, times: [0, 0.22, 0.72, 1], ease: ["easeOut", "linear", "easeIn"] }}
+            className="absolute flex w-[min(92%,36rem)] items-end gap-3 sm:w-[min(88%,48rem)] sm:gap-5"
+            style={offsetStyle}
+            initial={path.initial}
+            animate={path.animate}
+            transition={{ duration: 2.5, times: [0, 0.2, 0.7, 1], ease: ["easeOut", "linear", "easeIn"] }}
           >
             <div
-              className="absolute inset-y-2 left-0 right-8 -skew-x-6 rounded-lg border border-white/15 shadow-2xl sm:inset-y-4"
+              className="absolute inset-y-1 left-0 right-6 -skew-x-6 rounded-lg border border-white/15 shadow-2xl sm:inset-y-2"
               style={{ background: `linear-gradient(90deg, ${cue.teamColor}ee, ${cue.teamColor}99 45%, transparent)` }}
             />
-            <Portrait id={cue.charId} expr="ego" className="relative z-10 h-36 w-36 shrink-0 drop-shadow-[0_0_40px_rgba(34,211,238,0.55)] sm:h-48 sm:w-48" />
-            <div className="relative z-10 min-w-0 flex-1 pb-3 sm:pb-5">
+            <Portrait id={cue.charId} expr="ego" className="relative z-10 h-32 w-32 shrink-0 drop-shadow-[0_0_40px_rgba(34,211,238,0.55)] sm:h-44 sm:w-44" />
+            <div className="relative z-10 min-w-0 flex-1 pb-2 sm:pb-4">
               <div className="inline-block -skew-x-12 bg-slate-950/70 px-3 py-1 font-heading text-sm uppercase tracking-[0.25em] text-white sm:text-base">
                 {cue.name}
               </div>
               <div
-                className="mt-1 font-heading text-4xl uppercase italic leading-none text-white text-glow sm:text-6xl"
+                className="mt-1 font-heading text-3xl uppercase italic leading-none text-white text-glow sm:text-5xl"
                 style={{ WebkitTextStroke: `2px ${cue.teamColor}` }}
               >
                 {skill.ability.title}
