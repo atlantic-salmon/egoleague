@@ -8,6 +8,7 @@ export interface RosterEntry {
   level: number;
   talent: number;
   quality: number;
+  traits?: string[];
   gear?: GearInstanceLike[];
 }
 

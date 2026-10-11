@@ -43,12 +43,19 @@ export function buildRoster(userId: number, teamId: number | null | undefined, s
     for (const g of gear) {
       if (g.owner_id !== userId || g.locked_by) throw new HttpError(409, "Equipped gear is locked or not yours.");
     }
+    let traits: string[] = [];
+    try {
+      traits = JSON.parse(it.traits || "[]") as string[];
+    } catch {
+      traits = [];
+    }
     entries.push({
       itemId: it.id,
       variantId: it.template_id,
       level: it.level,
       talent: it.talent,
       quality: it.quality,
+      traits,
       gear: gear.map((g) => ({ templateId: g.template_id, talent: g.talent, quality: g.quality })),
     });
   }
@@ -57,7 +64,23 @@ export function buildRoster(userId: number, teamId: number | null | undefined, s
       "SELECT * FROM items WHERE owner_id = ? AND kind = 'char' AND locked_by IS NULL ORDER BY id LIMIT 1",
       userId,
     );
-    if (first) entries.push({ itemId: first.id, variantId: first.template_id, level: first.level, talent: first.talent, quality: first.quality, gear: [] });
+    if (first) {
+      let traits: string[] = [];
+      try {
+        traits = JSON.parse(first.traits || "[]") as string[];
+      } catch {
+        traits = [];
+      }
+      entries.push({
+        itemId: first.id,
+        variantId: first.template_id,
+        level: first.level,
+        talent: first.talent,
+        quality: first.quality,
+        traits,
+        gear: [],
+      });
+    }
   }
   while (entries.length < size) entries.push({ ...TRAINEE, itemId: null });
   return { team, entries, formation: (team?.formation ?? "balanced") as Formation, tuning: T };

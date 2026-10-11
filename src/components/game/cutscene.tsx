@@ -11,14 +11,134 @@ import { cn } from "@/lib/utils";
 import { useMediaQuery } from "@/lib/prefs";
 
 const BACKDROPS: Record<Backdrop, string> = {
-  void: "radial-gradient(ellipse at center, #0b1530 0%, #02040a 70%)",
-  facility: "linear-gradient(180deg, #0a1a3d 0%, #0b2a5e 45%, #06102a 100%)",
-  pitch: "linear-gradient(180deg, #052e1c 0%, #0b5132 50%, #04261a 100%)",
-  stadium: "radial-gradient(ellipse at 50% 0%, #1e3a8a 0%, #0b1530 50%, #020617 100%)",
-  crimson: "radial-gradient(ellipse at center, #7f1d1d 0%, #1c0507 75%)",
-  monitor: "linear-gradient(180deg, #001b2e 0%, #003049 50%, #001b2e 100%)",
-  night: "linear-gradient(180deg, #020617 0%, #0f172a 60%, #1e1b4b 100%)",
+  void: "radial-gradient(ellipse at 50% 40%, #12244a 0%, #060b18 45%, #010205 100%)",
+  facility:
+    "linear-gradient(180deg, #071428 0%, #0c2460 28%, #123a7a 52%, #0a1f4a 78%, #040a1a 100%)",
+  pitch:
+    "linear-gradient(180deg, #0a3d28 0%, #0f6b3e 22%, #12804a 48%, #0b5a35 72%, #052418 100%)",
+  stadium:
+    "radial-gradient(ellipse at 50% -10%, #3b82f6 0%, #1e3a8a 28%, #0f172a 62%, #020617 100%)",
+  crimson: "radial-gradient(ellipse at 50% 30%, #b91c1c 0%, #7f1d1d 35%, #450a0a 70%, #140202 100%)",
+  monitor: "linear-gradient(180deg, #00263d 0%, #00506e 40%, #00384f 70%, #001420 100%)",
+  night: "linear-gradient(180deg, #020617 0%, #0f172a 40%, #1e1b4b 75%, #312e81 100%)",
 };
+
+/** Extra layered scenery so cutscenes feel like places, not flat color washes. */
+function BackdropArt({ bg }: { bg: Backdrop }) {
+  if (bg === "facility") {
+    return (
+      <>
+        <div
+          className="pointer-events-none absolute inset-0 opacity-40"
+          style={{
+            background:
+              "repeating-linear-gradient(90deg, transparent 0 72px, rgba(56,189,248,0.07) 72px 74px), repeating-linear-gradient(0deg, transparent 0 56px, rgba(59,130,246,0.06) 56px 58px)",
+          }}
+        />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[18%] bg-gradient-to-b from-cyan-400/15 to-transparent" />
+        <div className="pointer-events-none absolute bottom-0 left-0 right-0 h-[28%] bg-gradient-to-t from-slate-950/80 via-slate-900/30 to-transparent" />
+        <div className="pointer-events-none absolute left-[8%] top-[22%] h-24 w-40 rounded-sm border border-cyan-400/20 bg-cyan-400/5 blur-[1px] sm:h-32 sm:w-56" />
+        <div className="pointer-events-none absolute right-[10%] top-[30%] h-20 w-28 rounded-sm border border-blue-300/15 bg-blue-400/5 sm:h-28 sm:w-40" />
+        <div
+          className="pointer-events-none absolute inset-x-[12%] top-[12%] h-px opacity-50"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(34,211,238,0.55), transparent)" }}
+        />
+      </>
+    );
+  }
+  if (bg === "pitch") {
+    return (
+      <>
+        <div
+          className="pointer-events-none absolute inset-0 opacity-35"
+          style={{
+            background:
+              "repeating-linear-gradient(90deg, rgba(255,255,255,0.04) 0 48px, rgba(0,0,0,0.08) 48px 96px)",
+          }}
+        />
+        <div className="pointer-events-none absolute left-1/2 top-[18%] h-[55%] w-[72%] -translate-x-1/2 rounded-[40%] border-2 border-white/15" />
+        <div className="pointer-events-none absolute left-1/2 top-[38%] size-24 -translate-x-1/2 rounded-full border border-white/20 sm:size-32" />
+        <div className="pointer-events-none absolute inset-x-0 top-1/2 h-px bg-white/20" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[22%] bg-gradient-to-t from-black/50 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[16%] bg-gradient-to-b from-emerald-200/10 to-transparent" />
+      </>
+    );
+  }
+  if (bg === "stadium") {
+    return (
+      <>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[38%] bg-gradient-to-b from-blue-300/20 via-blue-600/10 to-transparent" />
+        <div
+          className="pointer-events-none absolute inset-x-0 top-[8%] h-[26%] opacity-50"
+          style={{
+            background:
+              "repeating-linear-gradient(90deg, rgba(255,255,255,0.08) 0 10px, transparent 10px 22px)",
+            maskImage: "linear-gradient(180deg, black, transparent)",
+          }}
+        />
+        <div className="pointer-events-none absolute inset-x-[6%] bottom-[18%] h-[42%] rounded-t-[50%] border border-white/10 bg-emerald-900/25" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[30%] bg-gradient-to-t from-slate-950 via-slate-950/40 to-transparent" />
+        <div className="pointer-events-none absolute left-[15%] top-[20%] size-2 rounded-full bg-amber-200/80 blur-[1px]" />
+        <div className="pointer-events-none absolute right-[22%] top-[16%] size-1.5 rounded-full bg-white/70" />
+        <div className="pointer-events-none absolute left-[40%] top-[12%] size-1 rounded-full bg-cyan-200/80" />
+      </>
+    );
+  }
+  if (bg === "crimson") {
+    return (
+      <>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_60%,rgba(248,113,113,0.25),transparent_55%)]" />
+        <div
+          className="pointer-events-none absolute inset-0 opacity-30"
+          style={{
+            background:
+              "repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 12deg, rgba(127,29,29,0.35) 12deg 14deg)",
+          }}
+        />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[35%] bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="pointer-events-none absolute left-1/2 top-[20%] h-40 w-40 -translate-x-1/2 rounded-full bg-red-500/20 blur-3xl sm:h-56 sm:w-56" />
+      </>
+    );
+  }
+  if (bg === "monitor") {
+    return (
+      <>
+        <div className="pointer-events-none absolute inset-[6%] rounded-lg border border-cyan-400/25 bg-cyan-950/20 shadow-[inset_0_0_60px_rgba(34,211,238,0.12)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(0,0,0,0.28)_0_2px,transparent_2px_4px)] opacity-70" />
+        <div className="pointer-events-none absolute inset-x-[10%] top-[14%] h-px bg-gradient-to-r from-transparent via-cyan-300/60 to-transparent" />
+        <div className="pointer-events-none absolute left-[12%] top-[18%] font-mono text-[10px] uppercase tracking-[0.35em] text-cyan-300/50">
+          Blue Lock // Feed
+        </div>
+        <div className="pointer-events-none absolute bottom-[16%] right-[12%] size-16 rounded-full border border-cyan-400/20 sm:size-24" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_40%,rgba(0,20,40,0.55)_100%)]" />
+      </>
+    );
+  }
+  if (bg === "night") {
+    return (
+      <>
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_70%_20%,rgba(129,140,248,0.25),transparent_40%)]" />
+        <div className="pointer-events-none absolute left-[18%] top-[16%] size-1 rounded-full bg-white/80" />
+        <div className="pointer-events-none absolute left-[55%] top-[22%] size-0.5 rounded-full bg-white/70" />
+        <div className="pointer-events-none absolute right-[20%] top-[14%] size-1.5 rounded-full bg-indigo-100/80" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-indigo-950/80 via-slate-950/40 to-transparent" />
+      </>
+    );
+  }
+  // void
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(59,130,246,0.22),transparent_55%)]" />
+      <div
+        className="pointer-events-none absolute inset-0 opacity-30"
+        style={{
+          background:
+            "repeating-linear-gradient(115deg, transparent 0 40px, rgba(56,189,248,0.06) 40px 41px)",
+        }}
+      />
+    </>
+  );
+}
 
 const POS: Record<"left" | "right" | "center", string> = {
   left: "left-[2%] sm:left-[6%]",
@@ -142,8 +262,8 @@ export function Cutscene({ id, onDone }: { id: string; onDone: () => void }) {
         animate={shake ? { opacity: 1, x: [0, -10, 9, -6, 4, 0], y: [0, 6, -5, 3, 0] } : { opacity: 1 }}
         transition={{ duration: 0.45 }}
       >
-        <div className="bl-grid absolute inset-0 opacity-20" />
-        {frame.bg === "monitor" && <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(0,0,0,0.25)_0_2px,transparent_2px_4px)]" />}
+        <BackdropArt bg={frame.bg} />
+        <div className="bl-grid absolute inset-0 opacity-15" />
         <Fx frame={frame} />
 
         <AnimatePresence>

@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Portrait } from "./portrait";
 import { GearIcon, RarityBadge, RollBar } from "./item-card";
+import { TraitChips } from "./trait-chips";
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { CharItem, GearItem, Item, Profile } from "@/lib/types";
@@ -154,6 +155,18 @@ export function ItemDetail({
                   : "Quality is permanent and was rolled when this gear was pulled. It scales the gear's boosts."}
               </p>
             </div>
+            {item.kind === "char" && (
+              <div className="space-y-1">
+                <div className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  Mutations {item.traits.length ? `(${item.traits.length}/5)` : ""}
+                </div>
+                {item.traits.length ? (
+                  <TraitChips traits={item.traits} />
+                ) : (
+                  <p className="text-[11px] text-slate-500">No mutations. Starter players have none; gacha pulls can roll up to five +/− traits.</p>
+                )}
+              </div>
+            )}
             {item.kind === "char" ? (
               <div className="rounded-lg bg-slate-900 p-3 text-sm">
                 <div className="flex items-center justify-between">

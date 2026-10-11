@@ -16,7 +16,7 @@ export const GOAL_TOP = H / 2 - GOAL_W / 2;
 export const GOAL_BOT = H / 2 + GOAL_W / 2;
 export const PR = 15;
 export const BR = 7;
-export const GR = 26;
+export const GR = 17;
 
 export const IN = { UP: 1, DOWN: 2, LEFT: 4, RIGHT: 8, SHOOT: 16, PASS: 32, ABILITY: 64 } as const;
 
@@ -958,7 +958,9 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 
 export function snapshot(s: MatchState): Snapshot {
   const p: number[] = [];
-  for (const q of s.players) p.push(r1(q.x), r1(q.y), r1(q.hx * 100) / 100, r1(q.hy * 100) / 100, r1(q.speed), r1(q.charge), q.stun, q.tackleT, q.abilityT);
+  // stride 12: pos/heading/speed/charge/stun/tackleT/abilityT + kick/tackle/ability CDs for HUD
+  for (const q of s.players)
+    p.push(r1(q.x), r1(q.y), r1(q.hx * 100) / 100, r1(q.hy * 100) / 100, r1(q.speed), r1(q.charge), q.stun, q.tackleT, q.abilityT, q.kickCd, q.tackleCd, q.abilityCd);
   const g: number[] = [];
   for (const q of s.goalies) g.push(r1(q.x), r1(q.y), q.hold, r1(q.dive));
   const b = s.ball;
@@ -974,7 +976,8 @@ export function stateFromSnapshot(base: MatchState, a: Snapshot, bSnap: Snapshot
   s.phase = a.ph as 0 | 1 | 3;
   s.phaseT = a.pt;
   s.score = [a.sc[0], a.sc[1]];
-  const stride = a.p.length >= s.players.length * 9 ? 9 : 8;
+  const per = s.players.length > 0 ? Math.floor(a.p.length / s.players.length) : 8;
+  const stride = per >= 12 ? 12 : per >= 9 ? 9 : 8;
   for (let i = 0; i < s.players.length; i++) {
     const o = i * stride;
     const q = s.players[i];
@@ -987,7 +990,10 @@ export function stateFromSnapshot(base: MatchState, a: Snapshot, bSnap: Snapshot
     q.charge = a.p[o + 5];
     q.stun = a.p[o + 6];
     q.tackleT = a.p[o + 7];
-    q.abilityT = stride === 9 ? a.p[o + 8] : 0;
+    q.abilityT = stride >= 9 ? a.p[o + 8] : 0;
+    q.kickCd = stride >= 12 ? a.p[o + 9] : 0;
+    q.tackleCd = stride >= 12 ? a.p[o + 10] : 0;
+    q.abilityCd = stride >= 12 ? a.p[o + 11] : 0;
     q.vx = q.hx * q.speed;
     q.vy = q.hy * q.speed;
   }

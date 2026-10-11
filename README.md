@@ -8,14 +8,16 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
 - **League:** climb an escalating ladder of AI teams with your own collection lineup. Beat a side to unlock the next; any unlocked team can be replayed for smaller gem rewards.
 - **Abilities:** every skill has an activatable technique (Q / U / gamepad Y). The ability banner slides in from the left, holds, then exits off the right. Players also talk during matches with short banter bubbles.
 - **Camera:** the pitch is larger than the viewport. The camera follows you and zooms around the play.
-- **Character portraits:** each character (including Blue Lock Man and Ego) has an AI-generated profile image under `public/portraits/`. The UI uses those images and falls back to the vector bust if a file is missing.
+- **Character portraits:** transparent PNG cutouts under `public/portraits/` (JPG fallback, then vector bust). Cutscenes use layered scene backdrops (facility, pitch, stadium, monitor, etc.).
 - **Movement:** there is no sprint key. Players wind up to top speed over time. How fast depends on the character's Acceleration, and sharp turns bleed momentum based on Agility. Hold shoot to charge a shot. Pressing shoot without the ball is a tackle.
-- **Blue Lock Man goalkeeper:** an AI keeper that tracks the ball, dives, saves or parries shots, rushes out on through balls, and distributes the ball.
+- **Match HUD:** a translucent bottom-left panel shows shoot, tackle, and ability cooldowns for your controlled player.
+- **Blue Lock Man goalkeeper:** a compact AI keeper that tracks the ball, dives, saves or parries shots, rushes out on through balls, and distributes the ball.
 - **Gacha with 8 rarities:** Common (C), Uncommon (UC), Rare (R), Epic (E), Mythic (M), Legendary (L), World Class (WC), #1.
   - Characters come in several versions, such as Isagi (Base), Isagi (Team Z) and Isagi (Bastard München).
   - Gear (boots, headband, jersey) uses the same rarities. World Class and #1 gear have unique names, such as *Metavision Lens* and *Crown of the Striker*.
   - Pity: Legendary or better is guaranteed within 70 pulls, and #1 within 500. Every 10-pull includes at least one Rare or better.
 - **Talent / Quality:** characters roll Talent only (scales all player stats). Gear rolls Quality only (scales gear boosts). Rolls are permanent and set grade (S–D) and market value. Legendary rarity shows a gold chip with no "L" letter.
+- **Mutations:** gacha characters can roll up to 5 unique +/− traits that permanently buff or nerf stats. Starters have none. Traits are locked at create time like Talent.
 - **Teams:** save up to 8 lineups with formations. You can only use players you own, and a player that's locked in a trade or listing can't be used. Each team can include only one version of each character.
 - **Play modes:**
   - **Local 2P:** two players on one keyboard, head to head or co-op against bots. No account needed.

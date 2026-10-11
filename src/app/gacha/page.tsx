@@ -8,6 +8,7 @@ import { RequireAuth } from "@/components/auth-card";
 import { PageHeader, Loading, ErrorState } from "@/components/states";
 import { ItemCard, RarityBadge } from "@/components/game/item-card";
 import { Portrait } from "@/components/game/portrait";
+import { TraitChips } from "@/components/game/trait-chips";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -91,6 +92,16 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
                 </motion.div>
               ))}
             </div>
+            {shown >= items.length && items.length === 1 && items[0].kind === "char" && items[0].traits.length > 0 && (
+              <motion.div
+                className="mx-auto mt-4 max-w-md rounded-xl border border-white/10 bg-slate-900/80 p-3"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className="mb-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">Mutations</div>
+                <TraitChips traits={items[0].traits} className="justify-center" />
+              </motion.div>
+            )}
             {shown >= items.length && (
               <motion.div className="mt-6 flex justify-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
                 <Button
@@ -154,6 +165,7 @@ function RatesDialog({ open, onOpenChange, cfg, banner }: { open: boolean; onOpe
         </table>
         <ul className="list-disc space-y-1 pl-5 text-xs text-slate-400">
           <li>Players roll Talent; gear rolls Quality. Rolls are permanent and never rerolled.</li>
+          <li>Characters can roll up to 5 unique mutations (+ or −) that permanently buff or nerf stats. Higher rarities roll more.</li>
           <li>Legendary or better is guaranteed within {banner.pity.hardL} pulls. #1 is guaranteed within {banner.pity.hardN1} pulls.</li>
           <li>Every 10-pull includes at least one Rare or better.</li>
           {banner.featured.length > 0 && (

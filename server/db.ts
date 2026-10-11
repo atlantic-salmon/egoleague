@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS items (
   created_at INTEGER NOT NULL,
   locked_by TEXT,
   equipped_to INTEGER REFERENCES items(id) ON DELETE SET NULL,
-  equip_slot TEXT
+  equip_slot TEXT,
+  traits TEXT NOT NULL DEFAULT '[]'
 );
 CREATE INDEX IF NOT EXISTS items_owner ON items(owner_id);
 CREATE UNIQUE INDEX IF NOT EXISTS items_equip_slot ON items(equipped_to, equip_slot) WHERE equipped_to IS NOT NULL;
@@ -242,6 +243,27 @@ CREATE TABLE IF NOT EXISTS flags (
   created_at INTEGER NOT NULL
 );
 `);
+
+/** Lightweight migrations for existing local DBs. */
+(() => {
+  const cols = (db.prepare("PRAGMA table_info(items)").all() as { name: string }[]).map((c) => c.name);
+  if (!cols.includes("traits")) {
+    db.exec("ALTER TABLE items ADD COLUMN traits TEXT NOT NULL DEFAULT '[]'");
+  }
+  // Recreate immutability trigger to also lock traits.
+  db.exec("DROP TRIGGER IF EXISTS items_immutable_rolls");
+  db.exec(`
+CREATE TRIGGER items_immutable_rolls
+BEFORE UPDATE OF talent, quality, template_id, rarity, kind, created_at, origin, traits ON items
+WHEN OLD.talent IS NOT NEW.talent OR OLD.quality IS NOT NEW.quality
+  OR OLD.template_id IS NOT NEW.template_id OR OLD.rarity IS NOT NEW.rarity
+  OR OLD.kind IS NOT NEW.kind OR OLD.created_at IS NOT NEW.created_at OR OLD.origin IS NOT NEW.origin
+  OR OLD.traits IS NOT NEW.traits
+BEGIN
+  SELECT RAISE(ABORT, 'item rolls are immutable');
+END;
+`);
+})();
 
 /** Runs fn inside a single IMMEDIATE transaction; any throw rolls everything back. */
 export function tx<T>(fn: () => T): T {

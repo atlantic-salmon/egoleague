@@ -9,10 +9,90 @@ import { KeyboardInput, CONTROL_HELP, type Scheme } from "@/game/input";
 import { playEvents } from "@/game/sfx";
 import { usePref } from "@/lib/prefs";
 import type { MatchConfig, MatchEvent, MatchState } from "@/game/types";
+import { SKILLS } from "@/shared/catalog";
 import { TouchControls } from "./touch-controls";
 import { AbilityOverlay, type AbilityCue } from "./ability-overlay";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+
+interface CdHud {
+  kick: number;
+  kickMax: number;
+  tackle: number;
+  tackleMax: number;
+  ability: number;
+  abilityMax: number;
+  abilityKey: string;
+  shootKey: string;
+}
+
+const EMPTY_CD: CdHud = {
+  kick: 0,
+  kickMax: 30,
+  tackle: 0,
+  tackleMax: 60,
+  ability: 0,
+  abilityMax: 18 * TICK_RATE,
+  abilityKey: "Q",
+  shootKey: "Space",
+};
+
+function cdsFromState(s: MatchState, cfg: MatchConfig, humanSlot: number, scheme: Scheme): CdHud {
+  const idx = cfg.players.findIndex((p) => p.human === humanSlot);
+  const p = idx >= 0 ? s.players[idx] : null;
+  const pl = idx >= 0 ? cfg.players[idx] : null;
+  const skill = pl ? SKILLS[pl.skillId] : null;
+  const abilityMax = Math.max(1, Math.floor((skill?.ability.cooldownSec ?? 18) * TICK_RATE));
+  const help = CONTROL_HELP[scheme];
+  return {
+    kick: p?.kickCd ?? 0,
+    kickMax: 30,
+    tackle: p?.tackleCd ?? 0,
+    tackleMax: 60,
+    ability: p?.abilityCd ?? 0,
+    abilityMax,
+    abilityKey: help.ability,
+    shootKey: scheme === "p2" ? "Enter" : "Space",
+  };
+}
+
+function CdRow({ label, keyHint, left, max, readyColor }: { label: string; keyHint: string; left: number; max: number; readyColor: string }) {
+  const ready = left <= 0;
+  const pct = ready ? 100 : Math.max(0, Math.min(100, ((max - left) / max) * 100));
+  const secs = ready ? 0 : left / TICK_RATE;
+  return (
+    <div className="flex items-center gap-2">
+      <kbd className="w-10 shrink-0 rounded bg-white/10 px-1 py-0.5 text-center font-mono text-[10px] text-slate-200">{keyHint}</kbd>
+      <div className="min-w-0 flex-1">
+        <div className="mb-0.5 flex items-baseline justify-between gap-2 text-[10px] uppercase tracking-wider">
+          <span className={ready ? "text-white" : "text-slate-400"}>{label}</span>
+          <span className={cn("font-mono tabular-nums", ready ? "text-emerald-300" : "text-slate-300")}>
+            {ready ? "Ready" : `${secs.toFixed(1)}s`}
+          </span>
+        </div>
+        <div className="h-1.5 overflow-hidden rounded-full bg-black/40">
+          <div
+            className="h-full rounded-full transition-[width] duration-100"
+            style={{ width: `${pct}%`, background: ready ? readyColor : "rgba(148,163,184,0.7)" }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CooldownPanel({ cds }: { cds: CdHud }) {
+  return (
+    <div className="pointer-events-none absolute bottom-3 left-3 z-20 w-[11.5rem] rounded-xl border border-white/15 bg-slate-950/45 px-2.5 py-2 shadow-lg backdrop-blur-md sm:bottom-4 sm:left-4 sm:w-52">
+      <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300/90">Cooldowns</div>
+      <div className="space-y-1.5">
+        <CdRow label="Shoot" keyHint={cds.shootKey} left={cds.kick} max={cds.kickMax} readyColor="#38bdf8" />
+        <CdRow label="Tackle" keyHint="Hold" left={cds.tackle} max={cds.tackleMax} readyColor="#fbbf24" />
+        <CdRow label="Ability" keyHint={cds.abilityKey} left={cds.ability} max={cds.abilityMax} readyColor="#22d3ee" />
+      </div>
+    </div>
+  );
+}
 
 interface Banner {
   id: number;
@@ -63,6 +143,7 @@ function Hud({
   countdown,
   ability,
   talks,
+  cds,
 }: {
   cfg: MatchConfig;
   score: [number, number];
@@ -72,9 +153,11 @@ function Hud({
   countdown: number;
   ability: AbilityCue | null;
   talks: TalkLine[];
+  cds: CdHud;
 }) {
   return (
     <>
+      <CooldownPanel cds={cds} />
       <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center px-2">
         <div className="flex items-stretch overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 text-sm shadow-xl backdrop-blur sm:text-base">
           <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: `3px solid ${cfg.teams[0].color}` }}>
@@ -327,6 +410,11 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
   const { banners, ability, talks, onEvents } = useBanners(config);
   const [score, setScore] = useState<[number, number]>([0, 0]);
   const [clock, setClock] = useState(0);
+  const [cds, setCds] = useState<CdHud>(() => ({
+    ...EMPTY_CD,
+    abilityKey: CONTROL_HELP[schemes[0] ?? "solo"].ability,
+    shootKey: schemes[0] === "p2" ? "Enter" : "Space",
+  }));
   const [paused, setPaused] = useState(false);
   const [countdown, setCountdown] = useState(3);
   const pausedRef = useRef(false);
@@ -393,15 +481,17 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
             ended = true;
             setScore([s.score[0], s.score[1]]);
             setClock(s.clock);
+            setCds(cdsFromState(s, config, 0, schemes[0] ?? "solo"));
             setTimeout(() => onEndRef.current({ state: s, log }), 1600);
             break;
           }
         }
       }
       hudT += dt;
-      if (hudT > 0.2) {
+      if (hudT > 0.1) {
         hudT = 0;
         setClock(s.clock);
+        setCds(cdsFromState(s, config, 0, schemes[0] ?? "solo"));
       }
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext("2d");
@@ -418,12 +508,12 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
   const help =
     schemes.length > 1
       ? schemes.map((sc, i) => `P${i + 1}: ${CONTROL_HELP[sc].move}, shoot ${CONTROL_HELP[sc].shoot.split(" (")[0]}, pass ${CONTROL_HELP[sc].pass}`).join("   |   ")
-      : `Move ${CONTROL_HELP.solo.move}. Shoot/tackle ${CONTROL_HELP.solo.shoot}. Pass ${CONTROL_HELP.solo.pass}.`;
+      : `Move ${CONTROL_HELP.solo.move}. Shoot/tackle ${CONTROL_HELP.solo.shoot}. Pass ${CONTROL_HELP.solo.pass}. Ability ${CONTROL_HELP.solo.ability}.`;
 
   return (
     <Frame wrapRef={wrapRef} onPauseToggle={() => setPaused((p) => !p)} paused={paused} sound={sound} toggleSound={toggleSound} help={help}>
       <canvas ref={canvasRef} className="absolute inset-0" />
-      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={paused} countdown={countdown} ability={ability} talks={talks} />
+      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={paused} countdown={countdown} ability={ability} talks={talks} cds={cds} />
       <TouchControls onBits={(b) => kbRef.current && (kbRef.current.touchBits = b)} color={HUMAN_COLORS[0]} />
     </Frame>
   );
@@ -442,6 +532,11 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
   const { banners, ability, talks, onEvents } = useBanners(config);
   const [score, setScore] = useState<[number, number]>([0, 0]);
   const [clock, setClock] = useState(0);
+  const [cds, setCds] = useState<CdHud>(() => ({
+    ...EMPTY_CD,
+    abilityKey: CONTROL_HELP.solo.ability,
+    shootKey: "Space",
+  }));
   const [countdown, setCountdown] = useState(3);
   const kbRef = useRef<KeyboardInput | null>(null);
   const onEventsRef = useRef(onEvents);
@@ -505,9 +600,10 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
         const t = b ? Math.min(1, Math.max(0, (target - a.at) / Math.max(1, b.at - a.at))) : 0;
         stateFromSnapshot(base, a.s, b?.s ?? null, t);
         hudT += dt;
-        if (hudT > 0.2) {
+        if (hudT > 0.1) {
           hudT = 0;
           setClock(base.clock);
+          setCds(cdsFromState(base, config, you, "solo"));
         }
       }
       const canvas = canvasRef.current;
@@ -524,9 +620,9 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
   }, [config, you, feed, canvasRef]);
 
   return (
-    <Frame wrapRef={wrapRef} sound={sound} toggleSound={toggleSound} help={`Move ${CONTROL_HELP.solo.move}. Shoot/tackle ${CONTROL_HELP.solo.shoot}. Pass ${CONTROL_HELP.solo.pass}.`}>
+    <Frame wrapRef={wrapRef} sound={sound} toggleSound={toggleSound} help={`Move ${CONTROL_HELP.solo.move}. Shoot/tackle ${CONTROL_HELP.solo.shoot}. Pass ${CONTROL_HELP.solo.pass}. Ability ${CONTROL_HELP.solo.ability}.`}>
       <canvas ref={canvasRef} className="absolute inset-0" />
-      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={false} countdown={countdown} ability={ability} talks={talks} />
+      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={false} countdown={countdown} ability={ability} talks={talks} cds={cds} />
       <TouchControls onBits={(b) => kbRef.current && (kbRef.current.touchBits = b)} color={HUMAN_COLORS[you % HUMAN_COLORS.length]} />
     </Frame>
   );

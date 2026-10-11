@@ -13,13 +13,7 @@ function SvgBust({ id, expr, className, flip }: { id: string; expr: Expr; classN
   const hs = ch.hairStyle;
   return (
     <svg viewBox="0 0 200 220" className={className} style={flip ? { transform: "scaleX(-1)" } : undefined} aria-label={ch.name} role="img">
-      <defs>
-        <linearGradient id={`sh-${id}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0" stopColor="#1e3a8a" />
-          <stop offset="1" stopColor="#0b1220" />
-        </linearGradient>
-      </defs>
-      <path d="M30 220 C40 165 70 150 100 150 C130 150 160 165 170 220 Z" fill={`url(#sh-${id})`} />
+      {/* No solid backdrop — transparent cutout bust */}
       <path d="M85 150 L100 175 L115 150 Z" fill="#e2e8f0" />
       <rect x="86" y="120" width="28" height="36" rx="10" fill={ch.skin} />
       <path d="M58 82 C58 40 142 40 142 82 L140 112 C136 140 118 156 100 156 C82 156 64 140 60 112 Z" fill={ch.skin} />
@@ -73,29 +67,32 @@ function SvgBust({ id, expr, className, flip }: { id: string; expr: Expr; classN
         fill="none"
         strokeLinecap="round"
       />
-      {id === "blm" && (
-        <path d="M70 148 H130" stroke="#22d3ee" strokeWidth="3" opacity="0.7" strokeLinecap="round" />
-      )}
+      {id === "blm" && <path d="M70 148 H130" stroke="#22d3ee" strokeWidth="3" opacity="0.7" strokeLinecap="round" />}
     </svg>
   );
 }
 
-/** Character bust: prefers AI profile art when present, falls back to the vector bust. */
+/** Character bust: prefers transparent PNG cutouts, then JPG, then vector. */
 export function Portrait({ id, expr = "normal", className, flip }: { id: string; expr?: Expr; className?: string; flip?: boolean }) {
   const [failedFor, setFailedFor] = useState<string | null>(null);
+  const [useJpg, setUseJpg] = useState(false);
   const ch = CHARACTER_BY_ID[id];
-  const src = `/portraits/${id}.jpg`;
+  const png = `/portraits/${id}.png`;
+  const jpg = `/portraits/${id}.jpg`;
   const failed = failedFor === id;
   if (!failed && ch) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
       <img
-        key={id}
-        src={src}
+        key={`${id}-${useJpg ? "jpg" : "png"}`}
+        src={useJpg ? jpg : png}
         alt={ch.name}
-        className={cn("object-cover object-top", className)}
+        className={cn("object-contain object-bottom", className)}
         style={flip ? { transform: "scaleX(-1)" } : undefined}
-        onError={() => setFailedFor(id)}
+        onError={() => {
+          if (!useJpg) setUseJpg(true);
+          else setFailedFor(id);
+        }}
         draggable={false}
       />
     );

@@ -3,6 +3,7 @@
 import { Lock, Footprints, Crown, Shirt, Sparkle } from "lucide-react";
 import { RARITY_INFO, type Rarity } from "@/shared/rarity";
 import { Portrait } from "./portrait";
+import { TraitChips } from "./trait-chips";
 import type { Item } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import type { GearSlot } from "@/shared/catalog";
@@ -129,6 +130,9 @@ export function ItemCard({
           <div className="flex gap-2 text-[11px] text-slate-400">
             {item.kind === "char" ? <span>T {item.talent}</span> : <span>Q {item.quality}</span>}
           </div>
+        )}
+        {item.kind === "char" && item.traits.length > 0 && (
+          <TraitChips traits={item.traits} className={cn("mt-1", compact && "max-h-10 overflow-hidden")} max={compact ? 3 : 5} />
         )}
         {footer}
       </div>

@@ -4,6 +4,7 @@ import path from "node:path";
 import { all, get, run, today } from "./db";
 import { DEFAULT_TUNING, accountXpForLevel, computeRatings, estimateValue, grade, isPerfect, overall, type Tuning } from "@/shared/stats";
 import { GEAR_BY_ID, VARIANT_BY_ID, CHARACTER_BY_ID, ARCHETYPE_INFO, SKILLS, type GearSlot } from "@/shared/catalog";
+import { rollTraits, resolveTraits } from "@/shared/traits";
 import type { Rarity } from "@/shared/rarity";
 import { QUESTS, type QuestMetric } from "@/shared/quests";
 import { HttpError } from "./http";
@@ -52,6 +53,7 @@ export interface ItemRow {
   locked_by: string | null;
   equipped_to: number | null;
   equip_slot: GearSlot | null;
+  traits: string;
 }
 
 export function getUser(id: number) {
@@ -117,14 +119,29 @@ export function rollStat(rarity: Rarity) {
   return Math.round((a + b + c) / 3);
 }
 
-/** Creates an item. Characters roll Talent only; gear rolls Quality only. Must run inside tx(). */
+function parseTraits(raw: string | null | undefined): string[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw) as unknown;
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 5) : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Creates an item. Characters roll Talent + up to 5 traits; gear rolls Quality only. Must run inside tx(). */
 export function createItem(ownerId: number, kind: "char" | "gear", templateId: string, origin: string) {
   const rarity = (kind === "char" ? VARIANT_BY_ID[templateId]?.rarity : GEAR_BY_ID[templateId]?.rarity) as Rarity;
   if (!rarity) throw new Error("unknown template " + templateId);
   const talent = kind === "char" ? rollStat(rarity) : 50;
   const quality = kind === "gear" ? rollStat(rarity) : 50;
+  // Starters get no mutations; gacha / rewards roll 0–5 traits.
+  const traits =
+    kind === "char" && origin !== "starter"
+      ? rollTraits(rarity, (n) => crypto.randomInt(0, n))
+      : [];
   const r = run(
-    "INSERT INTO items(owner_id, kind, template_id, rarity, talent, quality, level, origin, created_at) VALUES (?,?,?,?,?,?,1,?,?)",
+    "INSERT INTO items(owner_id, kind, template_id, rarity, talent, quality, level, origin, created_at, traits) VALUES (?,?,?,?,?,?,1,?,?,?)",
     ownerId,
     kind,
     templateId,
@@ -133,9 +150,10 @@ export function createItem(ownerId: number, kind: "char" | "gear", templateId: s
     quality,
     origin,
     Date.now(),
+    JSON.stringify(traits),
   );
   const id = Number(r.lastInsertRowid);
-  applyDelta(ownerId, {}, "item_create", origin, { templateId, rarity, talent, quality }, id);
+  applyDelta(ownerId, {}, "item_create", origin, { templateId, rarity, talent, quality, traits }, id);
   return get<ItemRow>("SELECT * FROM items WHERE id = ?", id)!;
 }
 
@@ -148,6 +166,7 @@ export function gearFor(charItemId: number) {
 }
 
 export function itemView(it: ItemRow, gear?: ItemRow[]) {
+  const traitIds = parseTraits(it.traits);
   const value = estimateValue(it.rarity, it.talent, it.quality, it.level, T, it.kind);
   const base = {
     id: it.id,
@@ -164,13 +183,14 @@ export function itemView(it: ItemRow, gear?: ItemRow[]) {
     lockedBy: it.locked_by,
     value,
     createdAt: it.created_at,
+    traits: resolveTraits(traitIds).map((t) => ({ id: t.id, name: t.name, desc: t.desc, sign: t.sign })),
   };
   if (it.kind === "char") {
     const vd = VARIANT_BY_ID[it.template_id];
     const g = gear ?? gearFor(it.id);
     const ratings = computeRatings(
       it.template_id,
-      it,
+      { level: it.level, talent: it.talent, quality: it.quality, traits: traitIds },
       g.map((x) => ({ templateId: x.template_id, talent: x.talent, quality: x.quality })),
       T,
     );
@@ -188,7 +208,7 @@ export function itemView(it: ItemRow, gear?: ItemRow[]) {
     };
   }
   const gd = GEAR_BY_ID[it.template_id];
-  return { ...base, name: gd.name, slot: gd.slot, named: gd.named, equippedTo: it.equipped_to };
+  return { ...base, name: gd.name, slot: gd.slot, named: gd.named, equippedTo: it.equipped_to, traits: [] as typeof base.traits };
 }
 
 export type ItemView = ReturnType<typeof itemView>;

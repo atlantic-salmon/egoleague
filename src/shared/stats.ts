@@ -7,6 +7,7 @@ import {
   VARIANT_BY_ID,
   type StatKey,
 } from "./catalog";
+import { traitMods } from "./traits";
 import type { Rarity } from "./rarity";
 import type { PhysStats } from "@/game/types";
 import tuningJson from "./tuning.json";
@@ -20,6 +21,8 @@ export interface InstanceRolls {
   level: number;
   talent: number;
   quality: number;
+  /** Character trait mutation ids (max 5). */
+  traits?: string[];
 }
 
 export interface GearInstanceLike {
@@ -85,6 +88,8 @@ export function computeRatings(
     const gp = gearPoints(g, t).stats;
     for (const k of Object.keys(gp) as StatKey[]) out[k] += gp[k] ?? 0;
   }
+  const tmMods = traitMods(inst.traits ?? []);
+  for (const k of STAT_KEYS) out[k] += tmMods[k] ?? 0;
   for (const k of STAT_KEYS) out[k] = Math.round(clamp(out[k] * (1 + sb), 1, 160) * 10) / 10;
   return out;
 }

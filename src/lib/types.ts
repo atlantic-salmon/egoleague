@@ -20,6 +20,13 @@ export interface Profile {
   earlyBoost: boolean;
 }
 
+export interface TraitView {
+  id: string;
+  name: string;
+  desc: string;
+  sign: 1 | -1;
+}
+
 interface ItemBase {
   id: number;
   templateId: string;
@@ -35,6 +42,7 @@ interface ItemBase {
   value: number;
   createdAt: number;
   name: string;
+  traits: TraitView[];
 }
 
 export interface CharItem extends ItemBase {
