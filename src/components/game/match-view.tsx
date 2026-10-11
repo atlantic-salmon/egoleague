@@ -182,19 +182,27 @@ function Hud({
     <>
       <CooldownPanel cds={cds} />
       <div className="pointer-events-none absolute inset-x-0 top-2 flex justify-center px-2">
-        <div className="flex items-stretch overflow-hidden rounded-xl border border-white/10 bg-slate-950/80 text-sm shadow-xl backdrop-blur sm:text-base">
-          <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: `3px solid ${cfg.teams[0].color}` }}>
-            <span className="max-w-[9rem] truncate font-semibold text-slate-200">{cfg.teams[0].name}</span>
+        <div className="flex items-stretch overflow-hidden rounded-xl border border-white/15 text-sm shadow-xl backdrop-blur sm:text-base">
+          <div
+            className="flex max-w-[10rem] items-center gap-2 px-3 py-1.5 sm:max-w-[14rem]"
+            style={{ background: cfg.teams[0].color }}
+          >
+            <span className="inline-block size-2.5 shrink-0 rounded-sm bg-white/90" aria-hidden />
+            <span className="truncate font-heading text-xs uppercase tracking-wide text-white sm:text-sm">{cfg.teams[0].name}</span>
           </div>
-          <div className="flex items-center gap-2 bg-slate-900 px-3 font-heading text-2xl tabular-nums tracking-wider text-white">
-            <span>{score[0]}</span>
+          <div className="flex items-center gap-2 bg-slate-950 px-3 font-heading text-2xl tabular-nums tracking-wider text-white">
+            <span style={{ color: cfg.teams[0].accent }}>{score[0]}</span>
             <span className="text-slate-500">-</span>
-            <span>{score[1]}</span>
+            <span style={{ color: cfg.teams[1].accent }}>{score[1]}</span>
           </div>
-          <div className="flex items-center gap-2 px-3 py-1.5" style={{ borderBottom: `3px solid ${cfg.teams[1].color}` }}>
-            <span className="max-w-[9rem] truncate font-semibold text-slate-200">{cfg.teams[1].name}</span>
+          <div
+            className="flex max-w-[10rem] items-center gap-2 px-3 py-1.5 sm:max-w-[14rem]"
+            style={{ background: cfg.teams[1].color }}
+          >
+            <span className="truncate font-heading text-xs uppercase tracking-wide text-white sm:text-sm">{cfg.teams[1].name}</span>
+            <span className="inline-block size-2.5 shrink-0 rounded-full bg-white/90" aria-hidden />
           </div>
-          <div className="flex items-center bg-blue-600 px-3 font-mono font-bold tabular-nums text-white">{fmtClock(clock, cfg.durationSec)}</div>
+          <div className="flex items-center bg-slate-900 px-3 font-mono font-bold tabular-nums text-white">{fmtClock(clock, cfg.durationSec)}</div>
         </div>
       </div>
       <AnimatePresence>

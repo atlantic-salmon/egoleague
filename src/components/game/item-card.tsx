@@ -143,14 +143,15 @@ export function ItemCard({
             id={item.characterId}
             variantId={high ? item.templateId : undefined}
             expr={high ? "ego" : "normal"}
-            className={cn("h-full", compact ? "w-24" : "w-32")}
+            className={cn("relative z-[1] h-full", compact ? "w-24" : "w-32")}
           />
         ) : (
-          <div className="flex h-full items-center justify-center">
+          <div className="relative z-[1] flex h-full items-center justify-center">
             <GearArt templateId={item.templateId} slot={item.slot} rarity={item.rarity} className={cn(compact ? "h-16 w-16" : "h-24 w-24")} />
           </div>
         )}
-        <div className="absolute left-1.5 top-1.5 flex items-center gap-1">
+        {/* Above shimmer so L/M rarity + OVR stay readable on bright variant art */}
+        <div className="absolute left-1.5 top-1.5 z-10 flex items-center gap-1">
           <RarityBadge rarity={item.rarity} />
           {item.perfect && (
             <span className="inline-flex items-center gap-0.5 rounded bg-cyan-400/90 px-1 text-[10px] font-bold uppercase text-slate-950">
@@ -158,10 +159,15 @@ export function ItemCard({
             </span>
           )}
         </div>
-        <div className="absolute right-1.5 top-1.5 flex flex-col items-end gap-1">
-          {item.kind === "char" && <span className="rounded bg-slate-950/80 px-1.5 font-heading text-lg leading-tight text-white">{item.ovr}</span>}
+        <div className="absolute right-1.5 top-1.5 z-10 flex flex-col items-end gap-1">
+          {item.kind === "char" && (
+            <span className="rounded-md border border-white/20 bg-slate-950 px-1.5 font-heading text-lg leading-tight text-white shadow-md">
+              <span className="mr-0.5 text-[10px] font-sans font-semibold uppercase tracking-wide text-slate-400">OVR</span>
+              {item.ovr}
+            </span>
+          )}
           {item.kind === "gear" && (
-            <span className="rounded bg-slate-950/80 px-1.5 font-heading text-sm leading-tight text-white">Q{item.quality}</span>
+            <span className="rounded-md border border-white/20 bg-slate-950 px-1.5 font-heading text-sm leading-tight text-white shadow-md">Q{item.quality}</span>
           )}
           {item.locked && (
             <span className="rounded bg-amber-500/90 p-0.5 text-slate-950" title="Locked in a trade or listing">
@@ -169,11 +175,18 @@ export function ItemCard({
             </span>
           )}
         </div>
-        <span className={cn("absolute bottom-1 right-2 font-heading text-2xl italic", gradeColor[item.grade])}>{item.grade}</span>
+        <span className={cn("absolute bottom-1 right-2 z-10 font-heading text-2xl italic drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]", gradeColor[item.grade])}>{item.grade}</span>
       </div>
       <div className="flex flex-1 flex-col gap-1 p-2">
         <div className="min-w-0">
-          <div className="truncate text-sm font-semibold text-white">{item.kind === "char" ? item.name.split(" (")[0] : item.name}</div>
+          <div className="flex items-start justify-between gap-1">
+            <div className="truncate text-sm font-semibold text-white">{item.kind === "char" ? item.name.split(" (")[0] : item.name}</div>
+            {item.kind === "char" && (
+              <span className="shrink-0 font-heading text-sm tabular-nums" style={{ color: r.color }}>
+                {item.ovr}
+              </span>
+            )}
+          </div>
           <div className="truncate text-xs text-slate-400">
             {item.kind === "char" ? `${item.variantLabel} · ${item.archetypeLabel}` : `${item.slot === "band" ? "Headband" : item.slot === "boots" ? "Boots" : "Jersey"}`} · Lv {item.level}
           </div>

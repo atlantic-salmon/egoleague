@@ -247,13 +247,30 @@ function drawPlayer(
     ctx.globalAlpha = 1;
   }
 
-  ctx.fillStyle = def.kit || team.color;
-  ctx.strokeStyle = team.color;
-  ctx.lineWidth = 4;
+  // Team color is the body — variant kit is only a small chest stripe so sides stay readable.
+  ctx.fillStyle = team.color;
+  ctx.strokeStyle = team.accent;
+  ctx.lineWidth = 5;
   ctx.beginPath();
   ctx.arc(0, 0, PR, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+
+  // Dark ring separates similar kits; side mark (■ home / ● away) sits behind the head.
+  ctx.strokeStyle = "rgba(2,6,23,0.55)";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.arc(0, 0, PR - 1.5, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.fillStyle = def.kit || team.accent;
+  ctx.beginPath();
+  if (def.side === 0) {
+    roundRect(ctx, -6, -3, 12, 7, 2);
+    ctx.fill();
+  } else {
+    ctx.arc(0, 0, 5, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   const ch = CHARACTER_BY_ID[def.charId];
   ctx.fillStyle = ch?.skin ?? "#f1c9a5";
@@ -329,13 +346,24 @@ function drawPlayer(
   ctx.font = "700 12px var(--font-sans), sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
-  const label = humanIdx >= 0 ? `${def.name}` : def.name;
-  ctx.fillStyle = "rgba(2,6,23,0.6)";
-  const tw = ctx.measureText(label).width + 8;
-  roundRect(ctx, -tw / 2, -PR - 24, tw, 15, 4);
+  const label = def.name;
+  const tw = ctx.measureText(label).width + 14;
+  // Team-colored nameplate so you can read sides at a glance.
+  ctx.fillStyle = team.color;
+  roundRect(ctx, -tw / 2, -PR - 26, tw, 16, 4);
   ctx.fill();
-  ctx.fillStyle = humanIdx >= 0 ? HUMAN_COLORS[humanIdx % HUMAN_COLORS.length] : "#e2e8f0";
-  ctx.fillText(label, 0, -PR - 10);
+  ctx.strokeStyle = "rgba(2,6,23,0.65)";
+  ctx.lineWidth = 1.5;
+  roundRect(ctx, -tw / 2, -PR - 26, tw, 16, 4);
+  ctx.stroke();
+  ctx.fillStyle = "#f8fafc";
+  ctx.fillText(label, 0, -PR - 12);
+  if (humanIdx >= 0) {
+    ctx.fillStyle = HUMAN_COLORS[humanIdx % HUMAN_COLORS.length];
+    ctx.beginPath();
+    ctx.arc(tw / 2 - 2, -PR - 18, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -354,14 +382,19 @@ function drawGoalie(ctx: CanvasRenderingContext2D, s: MatchState, side: 0 | 1, c
   ctx.fill();
   ctx.scale(1, stretch);
 
-  // Same athlete silhouette as field players — kit, skin, hair — just larger.
-  ctx.fillStyle = BLUE_LOCK_MAN.kit;
-  ctx.strokeStyle = cfg.teams[side].color;
-  ctx.lineWidth = 4;
+  // Goalies wear the team color so sides stay obvious; cyan BLM mark on the chest.
+  const team = cfg.teams[side];
+  ctx.fillStyle = team.color;
+  ctx.strokeStyle = team.accent;
+  ctx.lineWidth = 5;
   ctx.beginPath();
   ctx.arc(0, 0, GR, 0, Math.PI * 2);
   ctx.fill();
   ctx.stroke();
+  ctx.fillStyle = BLUE_LOCK_MAN.kit;
+  ctx.beginPath();
+  ctx.arc(0, 2, 6, 0, Math.PI * 2);
+  ctx.fill();
 
   ctx.fillStyle = ch?.skin ?? "#e8c4a0";
   ctx.beginPath();
@@ -376,7 +409,7 @@ function drawGoalie(ctx: CanvasRenderingContext2D, s: MatchState, side: 0 | 1, c
   drawHair(ctx, "blm", hx, hy);
   ctx.restore();
 
-  ctx.fillStyle = BLUE_LOCK_MAN.accent;
+  ctx.fillStyle = team.accent;
   ctx.beginPath();
   ctx.moveTo(hx * (GR + 8), hy * (GR + 8));
   ctx.lineTo(hx * (GR + 1) - hy * 6, hy * (GR + 1) + hx * 6);
@@ -388,11 +421,11 @@ function drawGoalie(ctx: CanvasRenderingContext2D, s: MatchState, side: 0 | 1, c
   ctx.textAlign = "center";
   ctx.textBaseline = "bottom";
   const label = "Blue Lock Man";
-  ctx.fillStyle = "rgba(2,6,23,0.6)";
-  const tw = ctx.measureText(label).width + 8;
+  const tw = ctx.measureText(label).width + 12;
+  ctx.fillStyle = team.color;
   roundRect(ctx, -tw / 2, -GR - 22, tw, 14, 4);
   ctx.fill();
-  ctx.fillStyle = BLUE_LOCK_MAN.accent;
+  ctx.fillStyle = "#f8fafc";
   ctx.fillText(label, 0, -GR - 9);
   ctx.restore();
 }

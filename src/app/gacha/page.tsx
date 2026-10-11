@@ -32,6 +32,40 @@ function sortReveal(items: Item[]) {
   return [...items].sort((a, b) => rarityIndex(a.rarity) - rarityIndex(b.rarity));
 }
 
+function portraitUrls(it: Item): string[] {
+  if (it.kind !== "char") return [`/gear/${it.templateId}.png`];
+  const urls: string[] = [];
+  if (isLegendaryPlus(it.rarity)) urls.push(`/portraits/variants/${it.templateId}.png`);
+  urls.push(`/portraits/${it.characterId}.png`, `/portraits/${it.characterId}.jpg`);
+  return urls;
+}
+
+function preloadImages(urls: string[]) {
+  return Promise.all(
+    [...new Set(urls)].map(
+      (src) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          img.onload = () => resolve();
+          img.onerror = () => resolve();
+          img.src = src;
+        }),
+    ),
+  );
+}
+
+function holdMsFor(rarity: Rarity) {
+  const i = rarityIndex(rarity);
+  if (i >= rarityIndex("N1")) return 2400;
+  if (i >= rarityIndex("WC")) return 2100;
+  if (i >= rarityIndex("M")) return 1900;
+  if (i >= rarityIndex("L")) return 1700;
+  if (i >= rarityIndex("E")) return 1300;
+  if (i >= rarityIndex("R")) return 1100;
+  if (i >= rarityIndex("UC")) return 900;
+  return 750;
+}
+
 function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   const ordered = useMemo(() => sortReveal(items), [items]);
   const best = ordered.reduce((b, it) => (rarityIndex(it.rarity) > rarityIndex(b) ? it.rarity : b), "C" as Rarity);
@@ -40,13 +74,25 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   const high = isLegendaryPlus(best);
 
   // charge → (multi: one-by-one) → summary grid
-  const [phase, setPhase] = useState<"charge" | "one" | "summary">(multi ? "charge" : "charge");
+  const [phase, setPhase] = useState<"charge" | "one" | "summary">("charge");
   const [idx, setIdx] = useState(-1); // index into ordered currently spotlighted; -1 = not yet
   const [summaryReady, setSummaryReady] = useState(false);
+  const [assetsReady, setAssetsReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setAssetsReady(false);
+    void preloadImages(ordered.flatMap(portraitUrls)).then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [ordered]);
 
   useEffect(() => {
     uiBlip("pull");
-    const chargeMs = high ? 1800 : 1000;
+    const chargeMs = high ? 2600 : 1600;
     const t = setTimeout(() => {
       if (multi) {
         setPhase("one");
@@ -62,10 +108,11 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
 
   useEffect(() => {
     if (phase !== "one" || idx < 0 || idx >= ordered.length) return;
+    // Wait until portraits are cached so cards aren't blank mid-reveal.
+    if (!assetsReady) return;
     const it = ordered[idx];
-    const rare = rarityIndex(it.rarity) >= rarityIndex("L");
-    uiBlip(rare ? "rare" : "reveal");
-    const hold = rare ? 950 : rarityIndex(it.rarity) >= rarityIndex("E") ? 560 : 300;
+    uiBlip(rarityIndex(it.rarity) >= rarityIndex("L") ? "rare" : "reveal");
+    const hold = holdMsFor(it.rarity);
     const t = setTimeout(() => {
       if (idx + 1 >= ordered.length) {
         setPhase("summary");
@@ -75,7 +122,7 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
       }
     }, hold);
     return () => clearTimeout(t);
-  }, [phase, idx, ordered]);
+  }, [phase, idx, ordered, assetsReady]);
 
   const skip = () => {
     if (phase === "charge") {
@@ -89,7 +136,8 @@ function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
       return;
     }
     if (phase === "one") {
-      if (idx < ordered.length - 1) setIdx(ordered.length - 1);
+      // One click = next card (not jump to end), so players can actually see each reveal.
+      if (idx < ordered.length - 1) setIdx(idx + 1);
       else {
         setPhase("summary");
         setSummaryReady(true);

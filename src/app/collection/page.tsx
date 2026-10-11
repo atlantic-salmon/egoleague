@@ -74,17 +74,25 @@ function Collection() {
           >
             All
           </button>
-          {RARITIES.map((r) => (
-            <button
-              key={r}
-              onClick={() => setRarity(r)}
-              className={cn("rounded-md px-2 py-1 text-xs font-bold", rarity === r ? "bg-white/15" : "opacity-60 hover:opacity-100")}
-              style={{ color: RARITY_INFO[r].color }}
-              title={RARITY_INFO[r].label}
-            >
-              {RARITY_INFO[r].short}
-            </button>
-          ))}
+          {RARITIES.map((r) => {
+            const n = data.items.filter((i) => i.kind === kind && i.rarity === r).length;
+            return (
+              <button
+                key={r}
+                onClick={() => setRarity(r)}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs font-bold",
+                  rarity === r ? "border-white/30 bg-white/15" : "border-transparent opacity-70 hover:opacity-100",
+                  n === 0 && "opacity-35",
+                )}
+                style={{ color: RARITY_INFO[r].color }}
+                title={`${RARITY_INFO[r].label} (${n})`}
+              >
+                {RARITY_INFO[r].short}
+                <span className="font-sans text-[10px] tabular-nums text-slate-400">{n}</span>
+              </button>
+            );
+          })}
         </div>
         <div className="flex flex-1 gap-2 lg:justify-end">
           <Input placeholder="Search" value={q} onChange={(e) => setQ(e.target.value)} className="max-w-48" />
