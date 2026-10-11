@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Coins, Search, ShoppingCart, Store, Tag, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Gem, Search, ShoppingCart, Store, Tag, X } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/auth-card";
 import { PageHeader, Loading, ErrorState, Empty } from "@/components/states";
@@ -131,8 +131,8 @@ function Browse() {
               onClick={() => setBuying(l)}
               footer={
                 <div className="flex items-center justify-between text-xs">
-                  <span className="inline-flex items-center gap-1 font-semibold text-amber-200">
-                    <Coins className="size-3.5" /> {fmt(l.price)}
+                  <span className="inline-flex items-center gap-1 font-semibold text-cyan-200">
+                    <Gem className="size-3.5" /> {fmt(l.price)}
                   </span>
                   <span className={cn("truncate", l.sellerId === user?.id ? "text-cyan-300" : "text-slate-500")}>{l.sellerId === user?.id ? "You" : l.seller}</span>
                 </div>
@@ -158,7 +158,7 @@ function Browse() {
               <DialogHeader>
                 <DialogTitle>Buy {buying.item.name}?</DialogTitle>
                 <DialogDescription>
-                  Sold by {buying.seller}. Talent and Quality are permanent, so what you see is what you get.
+                  Sold by {buying.seller}. Players show Talent; gear shows Quality. Rolls are permanent.
                 </DialogDescription>
               </DialogHeader>
               <div className="mx-auto w-48">
@@ -167,17 +167,17 @@ function Browse() {
               <PriceHistory templateId={buying.item.templateId} />
               <div className="flex items-center justify-between rounded-lg bg-slate-900 px-3 py-2 text-sm">
                 <span className="text-slate-400">Price</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-amber-200">
-                  <Coins className="size-4" /> {fmt(buying.price)}
+                <span className="inline-flex items-center gap-1 font-semibold text-cyan-200">
+                  <Gem className="size-4" /> {fmt(buying.price)}
                 </span>
               </div>
-              <div className="text-xs text-slate-500">Estimated value {fmt(buying.item.value)} · You have {fmt(user?.coins ?? 0)} coins</div>
+              <div className="text-xs text-slate-500">Estimated value {fmt(buying.item.value)} · You have {fmt(user?.gems ?? 0)} gems</div>
               <Button
                 size="lg"
-                disabled={busy || buying.sellerId === user?.id || (user?.coins ?? 0) < buying.price}
+                disabled={busy || buying.sellerId === user?.id || (user?.gems ?? 0) < buying.price}
                 onClick={buy}
               >
-                <ShoppingCart /> {buying.sellerId === user?.id ? "This is your listing" : (user?.coins ?? 0) < buying.price ? "Not enough coins" : "Buy now"}
+                <ShoppingCart /> {buying.sellerId === user?.id ? "This is your listing" : (user?.gems ?? 0) < buying.price ? "Not enough gems" : "Buy now"}
               </Button>
             </>
           )}
@@ -196,7 +196,7 @@ function PriceHistory({ templateId }: { templateId: string }) {
   return (
     <div className="rounded-lg bg-slate-900 p-2 text-xs">
       <div className="mb-1 text-slate-300">
-        Recent sales · avg <span className="font-semibold text-amber-200">{fmt(data.avg ?? 0)}</span>
+        Recent sales · avg <span className="font-semibold text-cyan-200">{fmt(data.avg ?? 0)}</span>
       </div>
       <div className="flex flex-wrap gap-1">
         {data.sales.slice(0, 8).map((s, i) => (
@@ -234,7 +234,7 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
     try {
       const r = await api<{ user: Profile }>("/market/list", { body: { itemId: item.id, price: p }, idempotent: true });
       setUser(r.user);
-      toast.success(`${item.name} listed for ${fmt(p)} coins`);
+      toast.success(`${item.name} listed for ${fmt(p)} gems`);
       setItemId(null);
       await coll.reload();
       onListed();
@@ -275,7 +275,7 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
             <PriceHistory templateId={item.templateId} />
             <div>
               <label htmlFor="price" className="text-xs text-slate-400">
-                Price (coins)
+                Price (gems)
               </label>
               <Input id="price" inputMode="numeric" value={price} onChange={(ev) => setPrice(ev.target.value.replace(/\D/g, "").slice(0, 9))} />
             </div>
@@ -290,11 +290,11 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
               </div>
               <div className="flex justify-between font-semibold text-white">
                 <span>You receive if sold</span>
-                <span className="text-amber-200">{fmt(Math.max(0, p - tax))}</span>
+                <span className="text-cyan-200">{fmt(Math.max(0, p - tax))}</span>
               </div>
             </div>
             <p className="text-xs text-slate-500">The item is locked and removed from your teams while listed. The fee isn&apos;t refunded if you cancel.</p>
-            <Button className="w-full" size="lg" disabled={busy || p < (e?.minPrice ?? 1) || (user?.coins ?? 0) < fee} onClick={list}>
+            <Button className="w-full" size="lg" disabled={busy || p < (e?.minPrice ?? 1) || (user?.gems ?? 0) < fee} onClick={list}>
               <Store /> List for {fmt(p)}
             </Button>
           </div>
@@ -326,8 +326,8 @@ function Mine() {
           item={l.item}
           footer={
             <div className="flex items-center justify-between gap-1">
-              <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-200">
-                <Coins className="size-3.5" /> {fmt(l.price)}
+              <span className="inline-flex items-center gap-1 text-xs font-semibold text-cyan-200">
+                <Gem className="size-3.5" /> {fmt(l.price)}
               </span>
               <Button size="xs" variant="outline" onClick={() => cancel(l.id)}>
                 Cancel
@@ -346,7 +346,7 @@ function Market() {
   const [mineKey, setMineKey] = useState(0);
   return (
     <div>
-      <PageHeader title="Market" kicker="Buy and sell for coins">
+      <PageHeader title="Market" kicker="Buy and sell for gems">
         {(
           [
             ["browse", "Browse"],

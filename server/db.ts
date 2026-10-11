@@ -139,6 +139,15 @@ CREATE TABLE IF NOT EXISTS story_progress (
   PRIMARY KEY (user_id, stage_id)
 );
 
+CREATE TABLE IF NOT EXISTS league_progress (
+  user_id INTEGER NOT NULL,
+  team_id TEXT NOT NULL,
+  wins INTEGER NOT NULL DEFAULT 0,
+  best_score TEXT,
+  cleared_at INTEGER,
+  PRIMARY KEY (user_id, team_id)
+);
+
 CREATE TABLE IF NOT EXISTS match_tickets (
   id TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL,

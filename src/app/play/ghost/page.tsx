@@ -31,7 +31,7 @@ function Ghosts() {
   const [phase, setPhase] = useState<"pick" | "play" | "submitting" | "done">("pick");
   const [cfg, setCfg] = useState<{ ticketId: string; config: MatchConfig } | null>(null);
   const [played, setPlayed] = useState<LocalMatchResult | null>(null);
-  const [result, setResult] = useState<{ score: [number, number]; stats: LocalMatchResult["state"]["stats"]; rewards: { coins: number; xp: number } } | null>(null);
+  const [result, setResult] = useState<{ score: [number, number]; stats: LocalMatchResult["state"]["stats"]; rewards: { gems: number; xp: number } } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const schemes = useMemo<Scheme[]>(() => ["solo"], []);
 
@@ -53,7 +53,7 @@ function Ghosts() {
     setPlayed(r);
     setPhase("submitting");
     try {
-      const res = await api<{ score: [number, number]; stats: LocalMatchResult["state"]["stats"]; rewards: { coins: number; xp: number }; user: Profile }>("/match/submit", {
+      const res = await api<{ score: [number, number]; stats: LocalMatchResult["state"]["stats"]; rewards: { gems: number; xp: number }; user: Profile }>("/match/submit", {
         body: { ticketId: cfg.ticketId, inputs: encodeInputLog(r.log), claimed: r.state.score },
         idempotent: true,
       });
@@ -82,8 +82,8 @@ function Ghosts() {
         score={result?.score ?? played.state.score}
         stats={result?.stats ?? played.state.stats}
         title="Ghost match"
-        rewards={result ? { coins: result.rewards.coins, xp: result.rewards.xp } : undefined}
-        note={err ? `Result not counted: ${err}` : result && !result.rewards.coins ? "Daily friendly reward cap reached. The win still counts toward quests." : undefined}
+        rewards={result ? { gems: result.rewards.gems, xp: result.rewards.xp } : undefined}
+        note={err ? `Result not counted: ${err}` : result && !result.rewards.gems ? "Daily friendly reward cap reached. The win still counts toward quests." : undefined}
         actions={
           <>
             <Button size="lg" onClick={start}>

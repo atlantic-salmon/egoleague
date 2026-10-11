@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import {
   BookOpen,
-  Coins,
   Gem,
   Gamepad2,
   Sparkles,
@@ -20,7 +19,7 @@ import {
   X,
   LogOut,
   Settings,
-  Hexagon,
+  Medal,
 } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { api } from "@/lib/api";
@@ -29,6 +28,7 @@ import { cn } from "@/lib/utils";
 
 export const NAV = [
   { href: "/story", label: "Isagi's Path", icon: BookOpen },
+  { href: "/league", label: "League", icon: Medal },
   { href: "/play", label: "Play", icon: Gamepad2 },
   { href: "/gacha", label: "Gacha", icon: Sparkles },
   { href: "/collection", label: "Collection", icon: Shirt },
@@ -40,7 +40,7 @@ export const NAV = [
   { href: "/friends", label: "Friends", icon: UserPlus },
 ];
 
-export function Currency({ icon: Icon, value, className, label }: { icon: typeof Coins; value: number; className?: string; label: string }) {
+export function Currency({ icon: Icon, value, className, label }: { icon: typeof Gem; value: number; className?: string; label: string }) {
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-white/10", className)} title={label}>
       <Icon className="size-3.5" aria-hidden />
@@ -55,7 +55,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const inMatch = /^\/(story\/[^/]+|play\/(local|lobby|ranked|ghost).*)$/.test(pathname);
+  const inMatch = /^\/(story\/[^/]+|league\/[^/]+|play\/(local|lobby|ranked|ghost).*)$/.test(pathname);
 
   const logout = async () => {
     await api("/auth/logout", { method: "POST" }).catch(() => {});
@@ -93,9 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {user ? (
               <>
                 <div className="hidden items-center gap-1.5 sm:flex">
-                  <Currency icon={Coins} value={user.coins} className="text-amber-300" label="Coins" />
                   <Currency icon={Gem} value={user.gems} className="text-cyan-300" label="Gems" />
-                  <Currency icon={Hexagon} value={user.shards} className="text-violet-300" label="Shards" />
                 </div>
                 <Link href="/settings" className="hidden items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-300 hover:bg-white/5 md:flex">
                   <span className="font-semibold text-white">{user.username}</span>
@@ -127,9 +125,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="border-t border-white/10 bg-slate-950 xl:hidden">
             <div className="mx-auto grid max-w-7xl grid-cols-2 gap-1 p-3 sm:grid-cols-4">
               <div className="col-span-full mb-1 flex flex-wrap items-center gap-1.5 sm:hidden">
-                <Currency icon={Coins} value={user.coins} className="text-amber-300" label="Coins" />
                 <Currency icon={Gem} value={user.gems} className="text-cyan-300" label="Gems" />
-                <Currency icon={Hexagon} value={user.shards} className="text-violet-300" label="Shards" />
               </div>
               {NAV.map((n) => (
                 <Link

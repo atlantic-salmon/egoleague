@@ -12,7 +12,7 @@ import type { MatchConfig, MatchEvent, MatchState } from "@/game/types";
 import { TouchControls } from "./touch-controls";
 import { AbilityOverlay, type AbilityCue } from "./ability-overlay";
 import { Button } from "@/components/ui/button";
-import { SKILLS } from "@/shared/catalog";
+import { cn } from "@/lib/utils";
 
 interface Banner {
   id: number;
@@ -21,6 +21,27 @@ interface Banner {
   sub?: string;
   color: string;
 }
+
+interface TalkLine {
+  id: number;
+  name: string;
+  text: string;
+  color: string;
+  side: 0 | 1;
+}
+
+const TAUNTS = [
+  "I'll devour this goal!",
+  "Keep up if you can.",
+  "My ego won't lose here.",
+  "That was nothing.",
+  "Pass it — no, give it to me!",
+  "I saw that coming.",
+  "Stay hungry!",
+  "This pitch is mine.",
+  "One more. Make it count.",
+  "Don't blink.",
+];
 
 function useSettings() {
   const [shake] = usePref("bl_shake");
@@ -41,6 +62,7 @@ function Hud({
   paused,
   countdown,
   ability,
+  talks,
 }: {
   cfg: MatchConfig;
   score: [number, number];
@@ -49,6 +71,7 @@ function Hud({
   paused: boolean;
   countdown: number;
   ability: AbilityCue | null;
+  talks: TalkLine[];
 }) {
   return (
     <>
@@ -132,6 +155,26 @@ function Hud({
         </div>
       )}
       <AbilityOverlay cue={ability} />
+      <div className="pointer-events-none absolute inset-x-0 bottom-16 flex flex-col items-stretch gap-2 px-3 sm:bottom-20 sm:px-6">
+        <AnimatePresence>
+          {talks.map((t) => (
+            <motion.div
+              key={t.id}
+              className={cn("flex max-w-[85%] sm:max-w-md", t.side === 0 ? "self-start" : "self-end")}
+              initial={{ opacity: 0, y: 12, x: t.side === 0 ? -24 : 24 }}
+              animate={{ opacity: 1, y: 0, x: 0 }}
+              exit={{ opacity: 0, y: -8 }}
+            >
+              <div className="rounded-2xl border border-white/10 bg-slate-950/85 px-3 py-2 shadow-lg backdrop-blur">
+                <div className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: t.color }}>
+                  {t.name}
+                </div>
+                <div className="text-sm text-white">{t.text}</div>
+              </div>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
       {paused && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm">
           <div className="font-heading text-6xl italic tracking-wide text-white">PAUSED</div>
@@ -144,34 +187,67 @@ function Hud({
 function useBanners(cfg: MatchConfig) {
   const [banners, setBanners] = useState<Banner[]>([]);
   const [ability, setAbility] = useState<AbilityCue | null>(null);
+  const [talks, setTalks] = useState<TalkLine[]>([]);
   const idRef = useRef(0);
   const push = useCallback((b: Omit<Banner, "id">, ms: number) => {
     const id = ++idRef.current;
     setBanners((prev) => [...prev.filter((x) => x.kind !== b.kind), { ...b, id }]);
     setTimeout(() => setBanners((prev) => prev.filter((x) => x.id !== id)), ms);
   }, []);
+  const say = useCallback(
+    (playerIdx: number, text: string, ms = 2800) => {
+      const pl = cfg.players[playerIdx];
+      if (!pl) return;
+      const id = ++idRef.current;
+      const line: TalkLine = { id, name: pl.name, text, color: cfg.teams[pl.side].color, side: pl.side };
+      setTalks((prev) => [...prev.slice(-2), line]);
+      setTimeout(() => setTalks((prev) => prev.filter((x) => x.id !== id)), ms);
+    },
+    [cfg],
+  );
   const onEvents = useCallback(
     (events: MatchEvent[]) => {
       for (const e of events) {
         if (e.t === "goal") {
           const scorer = e.scorer >= 0 ? cfg.players[e.scorer]?.name : null;
           push({ kind: "goal", text: "GOAL!!", sub: scorer ? `${scorer} scores` : cfg.teams[e.side].name, color: cfg.teams[e.side].color }, 2300);
+          if (e.scorer >= 0) say(e.scorer, "That's my ego!");
+          const rival = cfg.players.findIndex((p) => p.side !== e.side);
+          if (rival >= 0) setTimeout(() => say(rival, "I'll take the next one."), 900);
         } else if (e.t === "save") {
           push({ kind: "save", text: "Blue Lock Man", sub: e.catch ? "CATCHES IT" : "PARRIES", color: "#0e7490" }, 1200);
+        } else if (e.t === "tackle") {
+          say(e.p, "Out of my way!");
         } else if (e.t === "ability") {
           const pl = cfg.players[e.p];
           if (!pl) continue;
           const id = ++idRef.current;
           const cue: AbilityCue = { id, charId: pl.charId, skillId: e.skillId, name: pl.name, teamColor: cfg.teams[pl.side].color };
           setAbility(cue);
-          const ms = Math.round(((SKILLS[e.skillId] ?? SKILLS.none).ability.durationSec) * 1000 * 0.55) + 900;
+          const ms = 2500;
           setTimeout(() => setAbility((cur) => (cur?.id === id ? null : cur)), ms);
         } else if (e.t === "end") push({ kind: "end", text: "Full Time", color: "#1d4ed8" }, 4000);
       }
     },
-    [cfg, push],
+    [cfg, push, say],
   );
-  return { banners, ability, onEvents };
+  useEffect(() => {
+    if (!cfg.players.length) return;
+    let alive = true;
+    const tick = () => {
+      if (!alive) return;
+      const i = Math.floor(Math.random() * cfg.players.length);
+      say(i, TAUNTS[Math.floor(Math.random() * TAUNTS.length)], 2600);
+      const next = 7000 + Math.random() * 9000;
+      setTimeout(tick, next);
+    };
+    const start = setTimeout(tick, 4500);
+    return () => {
+      alive = false;
+      clearTimeout(start);
+    };
+  }, [cfg, say]);
+  return { banners, ability, talks, onEvents };
 }
 
 function Frame({
@@ -193,7 +269,7 @@ function Frame({
 }) {
   return (
     <div className="flex w-full flex-col gap-2">
-      <div ref={wrapRef} className="relative aspect-[1268/808] w-full select-none overflow-hidden rounded-2xl border border-blue-500/20 bg-slate-950 shadow-[0_0_60px_-15px_rgba(37,99,235,0.6)]">
+      <div ref={wrapRef} className="relative aspect-[1728/1048] w-full select-none overflow-hidden rounded-2xl border border-blue-500/20 bg-slate-950 shadow-[0_0_60px_-15px_rgba(37,99,235,0.6)]">
         {children}
       </div>
       <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
@@ -248,7 +324,7 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useCanvas(wrapRef);
   const { shake, sound, toggleSound } = useSettings();
-  const { banners, ability, onEvents } = useBanners(config);
+  const { banners, ability, talks, onEvents } = useBanners(config);
   const [score, setScore] = useState<[number, number]>([0, 0]);
   const [clock, setClock] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -347,7 +423,7 @@ export function LocalMatch({ config, schemes, onEnd }: { config: MatchConfig; sc
   return (
     <Frame wrapRef={wrapRef} onPauseToggle={() => setPaused((p) => !p)} paused={paused} sound={sound} toggleSound={toggleSound} help={help}>
       <canvas ref={canvasRef} className="absolute inset-0" />
-      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={paused} countdown={countdown} ability={ability} />
+      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={paused} countdown={countdown} ability={ability} talks={talks} />
       <TouchControls onBits={(b) => kbRef.current && (kbRef.current.touchBits = b)} color={HUMAN_COLORS[0]} />
     </Frame>
   );
@@ -363,7 +439,7 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useCanvas(wrapRef);
   const { shake, sound, toggleSound } = useSettings();
-  const { banners, ability, onEvents } = useBanners(config);
+  const { banners, ability, talks, onEvents } = useBanners(config);
   const [score, setScore] = useState<[number, number]>([0, 0]);
   const [clock, setClock] = useState(0);
   const [countdown, setCountdown] = useState(3);
@@ -450,7 +526,7 @@ export function OnlineMatch({ config, you, feed }: { config: MatchConfig; you: n
   return (
     <Frame wrapRef={wrapRef} sound={sound} toggleSound={toggleSound} help={`Move ${CONTROL_HELP.solo.move}. Shoot/tackle ${CONTROL_HELP.solo.shoot}. Pass ${CONTROL_HELP.solo.pass}.`}>
       <canvas ref={canvasRef} className="absolute inset-0" />
-      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={false} countdown={countdown} ability={ability} />
+      <Hud cfg={config} score={score} clock={clock} banners={banners} paused={false} countdown={countdown} ability={ability} talks={talks} />
       <TouchControls onBits={(b) => kbRef.current && (kbRef.current.touchBits = b)} color={HUMAN_COLORS[you % HUMAN_COLORS.length]} />
     </Frame>
   );

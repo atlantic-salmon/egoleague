@@ -147,8 +147,8 @@ route("POST", "/items/:id/levelup", { rate: [30, 10_000], idempotent: true }, ({
     if (it.level >= levelCap(it.rarity)) fail(400, "Already at max level for this rarity");
     const cost = levelUpCost(it.level, it.rarity, T);
     const me = getUser(user.id);
-    if (me.coins < cost.coins || me.shards < cost.shards) fail(400, `Need ${cost.coins} coins and ${cost.shards} shards`);
-    applyDelta(user.id, { coins: -cost.coins, shards: -cost.shards }, "level_up", String(it.level + 1), null, it.id);
+    if (me.gems < cost.gems) fail(400, `Need ${cost.gems} gems`);
+    applyDelta(user.id, { gems: -cost.gems }, "level_up", String(it.level + 1), null, it.id);
     run("UPDATE items SET level = level + 1 WHERE id = ? AND owner_id = ?", it.id, user.id);
     questEvent(user.id, "levelups", 1);
     return get<ItemRow>("SELECT * FROM items WHERE id = ?", it.id)!;
@@ -158,27 +158,59 @@ route("POST", "/items/:id/levelup", { rate: [30, 10_000], idempotent: true }, ({
 
 route("GET", "/items/:id/cost", {}, ({ user, params }) => {
   const it = ownedItem(user.id, idParam(params.id));
-  return { cost: levelUpCost(it.level, it.rarity, T), maxed: it.level >= levelCap(it.rarity), shardsOnDismantle: dismantleValue(it) };
+  const value = estimateMarket(it);
+  return {
+    cost: levelUpCost(it.level, it.rarity, T),
+    maxed: it.level >= levelCap(it.rarity),
+    gemsOnDismantle: dismantleValue(it),
+    instantSell: Math.max(1, Math.floor((value * T.economy.instantSellPct) / 100)),
+    marketValue: value,
+  };
 });
 
 function dismantleValue(it: ItemRow) {
-  return Math.round(T.progression.shardsFromRarity[it.rarity] * (1 + (it.level - 1) * 0.15));
+  return Math.round(T.progression.gemsFromRarity[it.rarity] * (1 + (it.level - 1) * 0.15));
+}
+
+function estimateMarket(it: ItemRow) {
+  return itemView(it).value;
 }
 
 route("POST", "/items/:id/dismantle", { rate: [30, 10_000], idempotent: true }, ({ user, params }) => {
   const id = idParam(params.id);
-  const shards = tx(() => {
+  const gems = tx(() => {
     const it = ownedItem(user.id, id, { unlocked: true });
     const count = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char'", user.id)!.n;
     if (it.kind === "char" && count <= 1) fail(400, "You need at least one player");
-    const s = dismantleValue(it);
+    const g = dismantleValue(it);
     run("UPDATE items SET equipped_to = NULL, equip_slot = NULL WHERE equipped_to = ?", it.id);
     removeFromTeams(user.id, it.id);
-    applyDelta(user.id, { shards: s }, "dismantle", it.template_id, { rarity: it.rarity, talent: it.talent, quality: it.quality }, it.id);
+    applyDelta(user.id, { gems: g }, "dismantle", it.template_id, { rarity: it.rarity, talent: it.talent, quality: it.quality }, it.id);
     run("DELETE FROM items WHERE id = ? AND owner_id = ?", it.id, user.id);
-    return s;
+    return g;
   });
-  return { shards, user: publicProfile(getUser(user.id)) };
+  return { gems, user: publicProfile(getUser(user.id)) };
+});
+
+/** Instant sell for 50% of estimated market value in gems. */
+route("POST", "/items/:id/sell", { rate: [30, 10_000], idempotent: true }, ({ user, params }) => {
+  const id = idParam(params.id);
+  const out = tx(() => {
+    const it = ownedItem(user.id, id, { unlocked: true });
+    if (it.kind === "char") {
+      const count = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char'", user.id)!.n;
+      if (count <= 1) fail(400, "Keep at least one player");
+    }
+    const value = estimateMarket(it);
+    const gems = Math.max(1, Math.floor((value * T.economy.instantSellPct) / 100));
+    run("UPDATE items SET equipped_to = NULL, equip_slot = NULL WHERE equipped_to = ?", it.id);
+    removeFromTeams(user.id, it.id);
+    applyDelta(user.id, { gems }, "instant_sell", it.template_id, { value, pct: T.economy.instantSellPct }, it.id);
+    run("DELETE FROM items WHERE id = ? AND owner_id = ?", it.id, user.id);
+    questEvent(user.id, "market", 1);
+    return gems;
+  });
+  return { gems: out, user: publicProfile(getUser(user.id)) };
 });
 
 route(

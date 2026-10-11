@@ -81,7 +81,7 @@ function StoryMap() {
                         <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
                           <span className="rounded-full bg-blue-500/15 px-2 py-0.5 text-blue-200">{objectiveText(s.objective)}</span>
                           <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-300">
-                            {s.mySize === 1 ? "Solo" : `${s.mySize}v${s.opp.variants.length || 1}`}
+                            {s.preset.length === 1 ? "Solo" : `${s.preset.length}v${s.opp.variants.length || 1}`}
                           </span>
                           <span className="rounded-full bg-slate-800 px-2 py-0.5 text-slate-300">Rec. OVR {s.recommendedOvr}</span>
                           {reward && !st?.cleared && (

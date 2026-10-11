@@ -63,7 +63,7 @@ function FxLayer({ fx }: { fx: AbilityFx[] }) {
   );
 }
 
-/** Full-screen cutscene flash when a player activates their skill ability. */
+/** Ability banner: slides in from the left, holds, then exits off the right. */
 export function AbilityOverlay({ cue }: { cue: AbilityCue | null }) {
   const skill = cue ? SKILLS[cue.skillId] ?? SKILLS.none : null;
   return (
@@ -71,48 +71,36 @@ export function AbilityOverlay({ cue }: { cue: AbilityCue | null }) {
       {cue && skill && (
         <motion.div
           key={cue.id}
-          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center overflow-hidden"
+          className="pointer-events-none absolute inset-0 z-20 flex items-center overflow-hidden"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
+          transition={{ duration: 0.15 }}
         >
-          <div className="absolute inset-0 bg-slate-950/55" />
+          <div className="absolute inset-0 bg-slate-950/45" />
           <FxLayer fx={skill.ability.fx} />
           <motion.div
-            className="relative flex w-full max-w-3xl items-end gap-4 px-4 sm:gap-6"
-            initial={{ scale: skill.ability.fx.includes("zoom") ? 1.35 : 1.1, y: 40, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            exit={{ scale: 0.92, opacity: 0 }}
-            transition={{ type: "spring", stiffness: 220, damping: 18 }}
+            className="relative flex w-[min(100%,52rem)] items-end gap-3 px-3 sm:gap-5 sm:px-6"
+            initial={{ x: "-110%", opacity: 0.85 }}
+            animate={{ x: ["-110%", "0%", "0%", "120%"], opacity: [0.85, 1, 1, 0.9] }}
+            transition={{ duration: 2.4, times: [0, 0.22, 0.72, 1], ease: ["easeOut", "linear", "easeIn"] }}
           >
-            <Portrait id={cue.charId} expr="ego" className="h-40 w-40 shrink-0 drop-shadow-[0_0_40px_rgba(34,211,238,0.55)] sm:h-56 sm:w-56" />
-            <div className="min-w-0 flex-1 pb-4">
-              <motion.div
-                className="inline-block -skew-x-12 px-3 py-1 font-heading text-sm uppercase tracking-[0.25em] text-white sm:text-base"
-                style={{ background: cue.teamColor }}
-                initial={{ x: -40, opacity: 0 }}
-                animate={{ x: 0, opacity: 1 }}
-              >
+            <div
+              className="absolute inset-y-2 left-0 right-8 -skew-x-6 rounded-lg border border-white/15 shadow-2xl sm:inset-y-4"
+              style={{ background: `linear-gradient(90deg, ${cue.teamColor}ee, ${cue.teamColor}99 45%, transparent)` }}
+            />
+            <Portrait id={cue.charId} expr="ego" className="relative z-10 h-36 w-36 shrink-0 drop-shadow-[0_0_40px_rgba(34,211,238,0.55)] sm:h-48 sm:w-48" />
+            <div className="relative z-10 min-w-0 flex-1 pb-3 sm:pb-5">
+              <div className="inline-block -skew-x-12 bg-slate-950/70 px-3 py-1 font-heading text-sm uppercase tracking-[0.25em] text-white sm:text-base">
                 {cue.name}
-              </motion.div>
-              <motion.div
-                className="mt-1 font-heading text-5xl uppercase italic leading-none text-white text-glow sm:text-7xl"
+              </div>
+              <div
+                className="mt-1 font-heading text-4xl uppercase italic leading-none text-white text-glow sm:text-6xl"
                 style={{ WebkitTextStroke: `2px ${cue.teamColor}` }}
-                initial={{ letterSpacing: "0.4em", opacity: 0 }}
-                animate={{ letterSpacing: "0.04em", opacity: 1 }}
-                transition={{ delay: 0.08, duration: 0.45 }}
               >
                 {skill.ability.title}
-              </motion.div>
-              <motion.p
-                className="mt-2 max-w-xl text-base text-slate-100 sm:text-xl"
-                initial={{ y: 16, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.18 }}
-              >
-                “{skill.ability.line}”
-              </motion.p>
+              </div>
+              <p className="mt-2 max-w-xl text-sm text-slate-100 sm:text-lg">“{skill.ability.line}”</p>
               <div className="mt-1 text-xs uppercase tracking-widest text-cyan-300">{skill.name}</div>
             </div>
           </motion.div>

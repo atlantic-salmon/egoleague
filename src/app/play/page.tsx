@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { Ghost, Keyboard, Trophy, Users, BookOpen } from "lucide-react";
+import { Ghost, Keyboard, Trophy, Users, BookOpen, Medal } from "lucide-react";
 import { PageHeader } from "@/components/states";
 import { useSession } from "@/lib/session";
 
@@ -45,6 +45,14 @@ const MODES = [
     desc: "Story mode through the manga, from the First Selection to the Neo Egoist League.",
     icon: BookOpen,
     color: "from-blue-600 to-indigo-700",
+    auth: true,
+  },
+  {
+    href: "/league",
+    title: "League",
+    desc: "Climb a ladder of harder teams with your own lineup. Replay any unlocked side.",
+    icon: Medal,
+    color: "from-amber-500 to-orange-700",
     auth: true,
   },
 ];

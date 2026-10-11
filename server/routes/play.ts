@@ -18,11 +18,13 @@ import {
 } from "../economy";
 import { buildRoster } from "../roster";
 import { STAGES, STAGE_BY_ID, starsFor, type StageDef } from "@/shared/story";
+import { LEAGUE_TEAMS, LEAGUE_BY_ID, type LeagueTeam } from "@/shared/league";
 import { QUESTS, QUEST_BY_ID, type QuestDef } from "@/shared/quests";
 import { makePlayerDef, type RosterEntry } from "@/game/setup";
 import { maxMatchTicks, replay, TICK_RATE } from "@/game/engine";
 import type { MatchConfig, MatchPlayerDef } from "@/game/types";
 import { today } from "../db";
+import { VARIANT_BY_ID } from "@/shared/catalog";
 
 const clearedStages = (userId: number) =>
   new Map(all<{ stage_id: string; stars: number }>("SELECT stage_id, stars FROM story_progress WHERE user_id = ?", userId).map((r) => [r.stage_id, r.stars]));
@@ -53,33 +55,110 @@ function rosterDefs(entries: RosterEntry[], side: 0 | 1, humanFirst: boolean, pr
   return entries.map((e, i) => makePlayerDef(`${prefix}${i}`, e, side, humanFirst && i === 0 ? 0 : -1, T));
 }
 
-route("POST", "/story/:stageId/start", { body: z.object({ teamId: z.number().int().positive().nullable().optional() }), rate: [20, 60_000] }, ({ user, params, body }) => {
+/** Story / league preset lineups — fixed variants with rolls from rarity mid-band. */
+function presetRoster(variants: string[], level: number, roll: number): RosterEntry[] {
+  return variants.map((v, i) => {
+    const rarity = VARIANT_BY_ID[v]?.rarity ?? "C";
+    const base = roll || ({ C: 30, UC: 40, R: 50, E: 58, M: 66, L: 74, WC: 82, N1: 90 }[rarity] ?? 40);
+    return {
+      variantId: v,
+      level,
+      talent: Math.max(0, Math.min(100, base + ((i * 7) % 11) - 5)),
+      quality: 50,
+    };
+  });
+}
+
+route("POST", "/story/:stageId/start", { body: z.object({}).optional(), rate: [20, 60_000] }, ({ user, params }) => {
   const stage = STAGE_BY_ID[params.stageId];
   if (!stage) fail(404, "Stage not found");
   if (!isUnlocked(stage, clearedStages(user.id))) fail(403, "Clear the previous stage first");
-  const mine = buildRoster(user.id, body.teamId ?? null, stage.mySize);
+  const mine = presetRoster(stage.preset, Math.max(1, Math.round(stage.recommendedOvr / 4)), 45 + stage.chapter * 6);
   const opp: RosterEntry[] = stage.opp.variants.map((v, i) => ({
     variantId: v,
     level: stage.opp.level,
     talent: Math.max(0, Math.min(100, stage.opp.roll + ((i * 7) % 11) - 5)),
-    quality: Math.max(0, Math.min(100, stage.opp.roll + ((i * 5) % 9) - 4)),
+    quality: 50,
   }));
   const cfg: MatchConfig = {
     seed: newSeed(),
     durationSec: stage.durationSec,
     tempo: stage.tempo,
     teams: [
-      { name: mine.team?.name ?? "Team Z", color: "#2563eb", accent: "#dbeafe" },
+      { name: "Blue Lock", color: "#2563eb", accent: "#dbeafe" },
       { name: stage.opp.name, color: stage.opp.color, accent: stage.opp.accent },
     ],
-    players: [...rosterDefs(mine.entries, 0, true, "m"), ...rosterDefs(opp, 1, false, "o")],
+    players: [...rosterDefs(mine, 0, true, "m"), ...rosterDefs(opp, 1, false, "o")],
     botSkill: [stage.myBotSkill, stage.opp.botSkill],
     goalieSkill: [stage.myGoalie, stage.opp.goalie],
     humanCount: 1,
-    formations: [mine.formation, "balanced"],
+    formations: ["balanced", "balanced"],
   };
   return { ticketId: saveTicket(user.id, "story", stage.id, cfg), config: cfg, humanSlot: 0 };
 });
+
+function leagueCleared(userId: number) {
+  return new Set(all<{ team_id: string }>("SELECT team_id FROM league_progress WHERE user_id = ? AND wins > 0", userId).map((r) => r.team_id));
+}
+
+function leagueUnlocked(team: LeagueTeam, cleared: Set<string>) {
+  if (team.tier === 1) return true;
+  const prev = LEAGUE_TEAMS.find((t) => t.tier === team.tier - 1);
+  return prev ? cleared.has(prev.id) : false;
+}
+
+route("GET", "/league", {}, ({ user }) => {
+  const cleared = leagueCleared(user.id);
+  const rows = all<{ team_id: string; wins: number; best_score: string | null }>(
+    "SELECT team_id, wins, best_score FROM league_progress WHERE user_id = ?",
+    user.id,
+  );
+  const byId = new Map(rows.map((r) => [r.team_id, r]));
+  return {
+    teams: LEAGUE_TEAMS.map((t) => {
+      const st = byId.get(t.id);
+      return {
+        ...t,
+        unlocked: leagueUnlocked(t, cleared),
+        wins: st?.wins ?? 0,
+        bestScore: st?.best_score ? (JSON.parse(st.best_score) as [number, number]) : null,
+      };
+    }),
+  };
+});
+
+route(
+  "POST",
+  "/league/:teamId/start",
+  { body: z.object({ teamId: z.number().int().positive().nullable().optional() }), rate: [20, 60_000] },
+  ({ user, params, body }) => {
+    const foe = LEAGUE_BY_ID[params.teamId];
+    if (!foe) fail(404, "League team not found");
+    if (!leagueUnlocked(foe, leagueCleared(user.id))) fail(403, "Beat the previous league team first");
+    const mine = buildRoster(user.id, body.teamId ?? null, foe.mySize);
+    const opp = foe.variants.map((v, i) => ({
+      variantId: v,
+      level: foe.level,
+      talent: Math.max(0, Math.min(100, foe.roll + ((i * 7) % 11) - 5)),
+      quality: 50,
+    }));
+    const cfg: MatchConfig = {
+      seed: newSeed(),
+      durationSec: foe.durationSec,
+      tempo: foe.tempo,
+      teams: [
+        { name: mine.team?.name ?? "Your Team", color: "#2563eb", accent: "#dbeafe" },
+        { name: foe.name, color: foe.color, accent: foe.accent },
+      ],
+      players: [...rosterDefs(mine.entries, 0, true, "m"), ...rosterDefs(opp, 1, false, "o")],
+      botSkill: [0.55 + foe.tier * 0.03, foe.botSkill],
+      goalieSkill: [0.5 + foe.tier * 0.03, foe.goalie],
+      humanCount: 1,
+      formations: [mine.formation, "balanced"],
+    };
+    return { ticketId: saveTicket(user.id, "league", foe.id, cfg), config: cfg, humanSlot: 0 };
+  },
+);
 
 route(
   "POST",
@@ -181,18 +260,17 @@ route(
         const stage = STAGE_BY_ID[ticket!.ref];
         stars = starsFor(stage.objective, mine, theirs);
         const prev = get<{ stars: number }>("SELECT stars FROM story_progress WHERE user_id = ? AND stage_id = ?", user.id, stage.id);
-        rewards.coins += Math.round(T.economy.storyGoalCoins * mine * mult);
+        rewards.gems += Math.round(T.economy.storyGoalGems * mine * mult);
         rewards.xp += 20;
         if (stars > 0) {
           firstClear = !prev;
           newStars = Math.max(0, stars - (prev?.stars ?? 0));
           if (firstClear) {
             rewards.gems += stage.rewards.gems;
-            rewards.coins += stage.rewards.coins;
             rewards.xp += stage.rewards.xp;
             if (stage.rewards.variant) rewards.items.push(itemView(createItem(user.id, "char", stage.rewards.variant, `story:${stage.id}`), []));
           } else {
-            rewards.coins += Math.round(stage.rewards.coins * 0.2 * mult);
+            rewards.gems += Math.round(stage.rewards.gems * 0.15 * mult);
             rewards.xp += Math.round(stage.rewards.xp * 0.3);
           }
           rewards.gems += newStars * 50;
@@ -209,11 +287,39 @@ route(
           questEvent(user.id, "story_clear", 1);
           if (stage.id === "1-1") questEvent(user.id, "stage:1-1", 1);
         }
+      } else if (ticket!.mode === "league") {
+        const foe = LEAGUE_BY_ID[ticket!.ref];
+        const win = mine > theirs;
+        rewards.xp += win ? 40 : 15;
+        if (win) {
+          const prev = get<{ wins: number }>("SELECT wins FROM league_progress WHERE user_id = ? AND team_id = ?", user.id, foe.id);
+          const first = !prev || prev.wins === 0;
+          rewards.gems += Math.round((first ? foe.rewards.gems : T.economy.leagueReplayGems) * mult);
+          rewards.xp += first ? foe.rewards.xp : Math.round(foe.rewards.xp * 0.25);
+          run(
+            `INSERT INTO league_progress(user_id, team_id, wins, best_score, cleared_at) VALUES (?,?,1,?,?)
+             ON CONFLICT(user_id, team_id) DO UPDATE SET
+               wins = wins + 1,
+               best_score = CASE
+                 WHEN best_score IS NULL THEN excluded.best_score
+                 WHEN (CAST(json_extract(excluded.best_score,'$[0]') AS INT) - CAST(json_extract(excluded.best_score,'$[1]') AS INT))
+                    > (CAST(json_extract(best_score,'$[0]') AS INT) - CAST(json_extract(best_score,'$[1]') AS INT))
+                 THEN excluded.best_score ELSE best_score END,
+               cleared_at = COALESCE(cleared_at, excluded.cleared_at)`,
+            user.id,
+            foe.id,
+            JSON.stringify([mine, theirs]),
+            Date.now(),
+          );
+          questEvent(user.id, "league_win", 1);
+        } else {
+          rewards.gems += Math.round(4 * mult);
+        }
       } else if (ticket!.mode === "ghost") {
         const n = getCounter(user.id, "social_rewarded");
         if (n < T.economy.friendlyDailyRewardedMatches) {
           bumpCounter(user.id, "social_rewarded");
-          rewards.coins += Math.round((mine > theirs ? T.economy.ghostCoinsWin : T.economy.ghostCoinsLoss) * mult);
+          rewards.gems += Math.round((mine > theirs ? T.economy.ghostGemsWin : T.economy.ghostGemsLoss) * mult);
           rewards.xp += mine > theirs ? 40 : 15;
         }
       }
@@ -221,7 +327,7 @@ route(
       if (mine > theirs) questEvent(user.id, "wins", 1);
       run("UPDATE users SET goals = goals + ? WHERE id = ?", humanGoals, user.id);
       rewards.xp = Math.round(rewards.xp * mult);
-      if (rewards.coins || rewards.gems) applyDelta(user.id, { coins: rewards.coins, gems: rewards.gems }, `match_${ticket!.mode}`, ticket!.id, { score: s.score });
+      if (rewards.gems) applyDelta(user.id, { gems: rewards.gems }, `match_${ticket!.mode}`, ticket!.id, { score: s.score });
       const lv = grantXp(user.id, rewards.xp);
       run(
         "INSERT INTO matches(mode, user_a, user_b, score_a, score_b, meta, created_at) VALUES (?,?,?,?,?,?,?)",
@@ -290,7 +396,7 @@ route("POST", "/quests/:id/claim", { rate: [20, 10_000], idempotent: true }, ({ 
       period,
       q.target,
     );
-    applyDelta(user.id, { coins: q.reward.coins ?? 0, gems: q.reward.gems ?? 0, shards: q.reward.shards ?? 0 }, "quest", q.id);
+    applyDelta(user.id, { gems: q.reward.gems ?? 0 }, "quest", q.id);
   });
   return { user: publicProfile(getUser(user.id)) };
 });

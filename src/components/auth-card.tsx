@@ -38,7 +38,7 @@ export function AuthCard({ title = "Enter Blue Lock" }: { title?: string }) {
     <form onSubmit={submit} className="w-full max-w-sm space-y-4 rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl backdrop-blur">
       <div>
         <h2 className="font-heading text-2xl uppercase italic text-white">{title}</h2>
-        <p className="text-sm text-slate-400">Your account keeps your players, gear and coins safe on the server.</p>
+        <p className="text-sm text-slate-400">Your account keeps your players, gear and gems safe on the server.</p>
       </div>
       <Tabs value={mode} onValueChange={(v) => setMode(v as "login" | "register")}>
         <TabsList className="w-full">

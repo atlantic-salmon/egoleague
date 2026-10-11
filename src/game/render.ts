@@ -432,15 +432,46 @@ export function render(
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = "#020617";
   ctx.fillRect(0, 0, cw, ch);
-  const margin = 24;
-  const scale = Math.min(cw / (W + GOAL_DEPTH * 2 + margin * 2), ch / (H + margin * 2));
-  let ox = (cw - W * scale) / 2;
-  let oy = (ch - H * scale) / 2;
+  const margin = 20;
+  // Fit the full pitch, then zoom in so the camera frames your player tightly.
+  const fit = Math.min(cw / (W + GOAL_DEPTH * 2 + margin * 2), ch / (H + margin * 2));
+  const zoom = 1.42;
+  const scale = fit * zoom;
+
+  let focusX = W / 2;
+  let focusY = H / 2;
+  const youIdx = you.length
+    ? cfg.players.findIndex((p) => p.human >= 0 && you.includes(p.human))
+    : -1;
+  if (youIdx >= 0 && s.players[youIdx]) {
+    const p = s.players[youIdx];
+    // Bias slightly toward the ball so the play stays readable while following you.
+    focusX = p.x * 0.72 + s.ball.x * 0.28;
+    focusY = p.y * 0.78 + s.ball.y * 0.22;
+  } else if (fx.goalZoom > 0) {
+    focusX = s.ball.x;
+    focusY = s.ball.y;
+  }
+
+  const viewW = cw / scale;
+  const viewH = ch / scale;
+  const minX = -GOAL_DEPTH - margin;
+  const maxX = W + GOAL_DEPTH + margin - viewW;
+  const minY = -margin;
+  const maxY = H + margin - viewH;
+  let camX = focusX - viewW / 2;
+  let camY = focusY - viewH / 2;
+  camX = Math.max(minX, Math.min(maxX, camX));
+  camY = Math.max(minY, Math.min(maxY, camY));
+
+  let ox = -camX * scale;
+  let oy = -camY * scale;
   if (fx.shake > 0) {
     ox += (Math.random() - 0.5) * fx.shake * scale * 2;
     oy += (Math.random() - 0.5) * fx.shake * scale * 2;
     fx.shake = Math.max(0, fx.shake - dt * 40);
   }
+  fx.goalZoom = Math.max(0, fx.goalZoom - dt * 0.9);
   ctx.setTransform(scale, 0, 0, scale, ox, oy);
   drawPitch(ctx, fx);
   fx.net[0] = Math.max(0, fx.net[0] - dt * 0.8);

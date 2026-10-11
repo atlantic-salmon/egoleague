@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { CheckCircle2, Coins, Gem, Hammer, CalendarClock, Trophy } from "lucide-react";
+import { CheckCircle2, Gem, CalendarClock, Trophy } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/auth-card";
 import { PageHeader, Loading, ErrorState } from "@/components/states";
@@ -23,16 +23,6 @@ function Reward({ r }: { r: QuestDef["reward"] }) {
       {!!r.gems && (
         <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-cyan-200">
           <Gem className="size-3" /> {r.gems}
-        </span>
-      )}
-      {!!r.coins && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-amber-200">
-          <Coins className="size-3" /> {r.coins}
-        </span>
-      )}
-      {!!r.shards && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-violet-500/15 px-2 py-0.5 text-violet-200">
-          <Hammer className="size-3" /> {r.shards} shards
         </span>
       )}
     </div>

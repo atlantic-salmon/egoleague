@@ -9,6 +9,17 @@ import type { GearSlot } from "@/shared/catalog";
 
 export function RarityBadge({ rarity, className }: { rarity: Rarity; className?: string }) {
   const r = RARITY_INFO[rarity];
+  // Legendary shows a color chip with no letter/tier mark.
+  if (!r.short) {
+    return (
+      <span
+        className={cn("inline-flex size-5 items-center justify-center rounded", className)}
+        style={{ background: r.color, boxShadow: `0 0 10px ${r.glow}` }}
+        title={r.label}
+        aria-label={r.label}
+      />
+    );
+  }
   return (
     <span
       className={cn("inline-flex items-center rounded px-1.5 py-0.5 font-heading text-[11px] uppercase tracking-wider text-slate-950", className)}
@@ -111,14 +122,12 @@ export function ItemCard({
         </div>
         {!compact && (
           <div className="mt-1 space-y-0.5">
-            <RollBar label="Talent" value={item.talent} />
-            <RollBar label="Quality" value={item.quality} />
+            {item.kind === "char" ? <RollBar label="Talent" value={item.talent} /> : <RollBar label="Quality" value={item.quality} />}
           </div>
         )}
         {compact && (
           <div className="flex gap-2 text-[11px] text-slate-400">
-            <span>T {item.talent}</span>
-            <span>Q {item.quality}</span>
+            {item.kind === "char" ? <span>T {item.talent}</span> : <span>Q {item.quality}</span>}
           </div>
         )}
         {footer}

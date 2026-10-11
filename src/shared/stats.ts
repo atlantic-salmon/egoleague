@@ -2,10 +2,8 @@ import {
   ARCHETYPE_INFO,
   GEAR_BY_ID,
   GEAR_SLOT_STATS,
-  QUALITY_STATS,
   SKILLS,
   STAT_KEYS,
-  TALENT_STATS,
   VARIANT_BY_ID,
   type StatKey,
 } from "./catalog";
@@ -36,16 +34,18 @@ export function rollMultiplier(roll: number, min: number, max: number) {
   return min + (max - min) * (clamp(roll, 0, 100) / 100);
 }
 
-export function levelBonus(level: number, quality: number, t: Tuning) {
-  const growth = t.stats.levelGrowthMax * (0.75 + 0.5 * (quality / 100));
+/** Characters level from Talent; gear level from Quality. */
+export function levelBonus(level: number, roll: number, t: Tuning) {
+  const growth = t.stats.levelGrowthMax * (0.75 + 0.5 * (roll / 100));
   return growth * (1 - Math.pow(t.stats.levelDecay, Math.max(0, level - 1)));
 }
 
+/** Gear only uses Quality for its power. */
 export function gearPoints(g: GearInstanceLike, t: Tuning) {
   const def = GEAR_BY_ID[g.templateId];
   if (!def) return { stats: {} as Partial<Ratings>, total: 0 };
   const base = t.stats.gearPoints[def.rarity as Rarity];
-  const mult = 0.7 + 0.6 * ((g.talent + g.quality) / 200);
+  const mult = 0.7 + 0.6 * (g.quality / 100);
   const pts = Math.round(base * mult * 10) / 10;
   const [a, b] = GEAR_SLOT_STATS[def.slot];
   return { stats: { [a]: pts, [b]: pts } as Partial<Ratings>, total: pts * 2 };
@@ -72,15 +72,14 @@ export function computeRatings(
   const power = t.stats.rarityPower[(vd?.rarity ?? "C") as Rarity];
   const shape = ARCHETYPE_INFO[vd?.archetype ?? "allround"].shape;
   const skill = SKILLS[vd?.skill ?? "none"];
+  // Characters are Talent-only for all core stats.
   const tm = rollMultiplier(inst.talent, t.stats.talentMin, t.stats.talentMax);
-  const qm = rollMultiplier(inst.quality, t.stats.qualityMin, t.stats.qualityMax);
-  const lb = levelBonus(inst.level, inst.quality, t);
+  const lb = levelBonus(inst.level, inst.talent, t);
   const sb = setBonus(gear, t);
   const out = {} as Ratings;
   for (const k of STAT_KEYS) {
     const base = power + shape[k] + (skill.mods[k] ?? 0);
-    const rollMult = TALENT_STATS.includes(k) ? tm : QUALITY_STATS.includes(k) ? qm : (tm + qm) / 2;
-    out[k] = base * rollMult * (1 + lb);
+    out[k] = base * tm * (1 + lb);
   }
   for (const g of gear) {
     const gp = gearPoints(g, t).stats;
@@ -129,32 +128,42 @@ export function toPhysics(r: Ratings, t: Tuning = DEFAULT_TUNING): PhysStats {
   };
 }
 
-export function grade(talent: number, quality: number) {
-  const avg = (talent + quality) / 2;
-  if (avg >= 90) return "S";
-  if (avg >= 75) return "A";
-  if (avg >= 55) return "B";
-  if (avg >= 35) return "C";
+export function gradeFromRoll(roll: number) {
+  if (roll >= 90) return "S";
+  if (roll >= 75) return "A";
+  if (roll >= 55) return "B";
+  if (roll >= 35) return "C";
   return "D";
 }
 
-export function isPerfect(talent: number, quality: number) {
-  return talent >= 95 || quality >= 95;
+/** Grade uses Talent for characters and Quality for gear. */
+export function grade(talent: number, quality: number, kind: "char" | "gear" = "char") {
+  return gradeFromRoll(kind === "gear" ? quality : talent);
 }
 
-export function estimateValue(rarity: Rarity, talent: number, quality: number, level: number, t: Tuning = DEFAULT_TUNING) {
+export function isPerfect(talent: number, quality: number, kind: "char" | "gear" = "char") {
+  return (kind === "gear" ? quality : talent) >= 95;
+}
+
+export function estimateValue(
+  rarity: Rarity,
+  talent: number,
+  quality: number,
+  level: number,
+  t: Tuning = DEFAULT_TUNING,
+  kind: "char" | "gear" = "char",
+) {
   const base = t.economy.basePrice[rarity];
-  const roll = (talent + quality) / 200;
-  const mult = 0.5 + roll * roll * 2.5 + (isPerfect(talent, quality) ? 0.75 : 0);
+  const roll = (kind === "gear" ? quality : talent) / 100;
+  const mult = 0.5 + roll * roll * 2.5 + (isPerfect(talent, quality, kind) ? 0.75 : 0);
   return Math.max(t.economy.marketMinPrice, Math.round(base * mult * (1 + 0.02 * Math.max(0, level - 1))));
 }
 
 export function levelUpCost(level: number, rarity: Rarity, t: Tuning = DEFAULT_TUNING) {
   const pr = t.progression;
   const rIdx = ["C", "UC", "R", "E", "M", "L", "WC", "N1"].indexOf(rarity);
-  const coins = Math.round(pr.levelUpCoinBase * Math.pow(pr.levelUpCoinGrowth, level - 1) * (1 + rIdx * 0.35));
-  const shards = Math.round(pr.levelUpShardBase * Math.pow(pr.levelUpShardGrowth, level - 1) * (1 + rIdx * 0.25));
-  return { coins, shards };
+  const gems = Math.round(pr.levelUpGemBase * Math.pow(pr.levelUpGemGrowth, level - 1) * (1 + rIdx * 0.3));
+  return { gems };
 }
 
 export function accountXpForLevel(level: number, t: Tuning = DEFAULT_TUNING) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "motion/react";
-import { BookOpen, Gamepad2, Sparkles, Users, Store, ScrollText, Trophy, Zap, Swords } from "lucide-react";
+import { BookOpen, Gamepad2, Sparkles, Users, Store, ScrollText, Trophy, Zap, Swords, Medal } from "lucide-react";
 import { useSession } from "@/lib/session";
 import { AuthCard } from "@/components/auth-card";
 import { Loading } from "@/components/states";
@@ -47,11 +47,12 @@ function Hero() {
 
 const tiles = [
   { href: "/story", label: "Isagi's Path", desc: "Story mode through the manga arcs, with cutscenes.", icon: BookOpen, color: "from-blue-600 to-indigo-700" },
+  { href: "/league", label: "League", desc: "Climb escalating teams. Replay any unlocked side.", icon: Medal, color: "from-amber-500 to-orange-700" },
   { href: "/play", label: "Play", desc: "Local 2P, friendly lobbies, ranked and ghost matches.", icon: Gamepad2, color: "from-emerald-600 to-teal-700" },
   { href: "/gacha", label: "Gacha", desc: "8 rarities from Common to #1. Characters and gear.", icon: Sparkles, color: "from-fuchsia-600 to-purple-700" },
   { href: "/teams", label: "Teams", desc: "Build lineups from players you've unlocked.", icon: Users, color: "from-sky-600 to-blue-700" },
-  { href: "/market", label: "Market", desc: "Buy and sell players and gear for coins.", icon: Store, color: "from-amber-500 to-orange-700" },
-  { href: "/quests", label: "Quests", desc: "Daily and lifetime goals for gems and coins.", icon: ScrollText, color: "from-rose-600 to-red-700" },
+  { href: "/market", label: "Market", desc: "Buy and sell players and gear for gems.", icon: Store, color: "from-cyan-600 to-blue-700" },
+  { href: "/quests", label: "Quests", desc: "Daily and lifetime goals for gems.", icon: ScrollText, color: "from-rose-600 to-red-700" },
 ];
 
 function Hub() {
@@ -158,7 +159,7 @@ export default function Home() {
             ["Gacha with permanent rolls", "Every pull rolls Talent and Quality from 0 to 100. They can never be changed."],
             ["Two players, one laptop", "WASD vs arrow keys. No account needed for local play."],
             ["Online lobbies", "Mix friends and bots on either side, or queue for ranked 3v3."],
-            ["Market and trades", "Sell players for coins or swap directly with friends."],
+            ["Market and trades", "Sell players for gems or swap directly with friends."],
             ["Cheat-proof", "The server owns your items and replays every match to verify results."],
           ].map(([t, d]) => (
             <div key={t} className="rounded-xl border border-white/10 bg-slate-900/60 p-4">

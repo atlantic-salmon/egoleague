@@ -3,7 +3,7 @@ import { route, fail } from "../http";
 import { get, run, tx } from "../db";
 import { createSession, destroySession, hashPassword, issueWsTicket, parseCookies, sessionCookie, verifyPassword, COOKIE } from "../auth";
 import { T, applyDelta, createItem, getUser, publicProfile } from "../economy";
-import { STARTER_GEAR, STARTER_VARIANTS } from "@/shared/catalog";
+import { STARTER_VARIANTS } from "@/shared/catalog";
 import { BANNERS } from "@/shared/banners";
 
 const creds = z.object({
@@ -28,14 +28,8 @@ route("POST", "/auth/register", { auth: false, body: creds, rate: [5, 60_000] },
       T.match.startRating,
     );
     const id = Number(r.lastInsertRowid);
-    applyDelta(id, { coins: T.economy.startingCoins, gems: T.economy.startingGems, shards: 10 }, "starter_pack");
+    applyDelta(id, { gems: T.economy.startingGems }, "starter_pack");
     const chars = STARTER_VARIANTS.map((v) => createItem(id, "char", v, "starter"));
-    const gear = STARTER_GEAR.map((g) => createItem(id, "gear", g, "starter"));
-    gear.forEach((g, i) => {
-      const slot = g.template_id.split(".")[0];
-      run("UPDATE items SET equipped_to = ?, equip_slot = ? WHERE id = ?", chars[0].id, slot, g.id);
-      void i;
-    });
     run(
       "INSERT INTO teams(user_id, name, formation, slots, is_default, created_at) VALUES (?,?,?,?,1,?)",
       id,

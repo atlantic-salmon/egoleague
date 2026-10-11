@@ -8,8 +8,8 @@ import type { BallState, GState, MatchConfig, MatchEvent, MatchState, PState } f
 
 export const TICK_RATE = 60;
 export const DT = 1 / TICK_RATE;
-export const W = 1200;
-export const H = 760;
+export const W = 1680;
+export const H = 980;
 export const GOAL_W = 190;
 export const GOAL_DEPTH = 34;
 export const GOAL_TOP = H / 2 - GOAL_W / 2;

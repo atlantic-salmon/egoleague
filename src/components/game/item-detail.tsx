@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpCircle, Coins, Hammer, Lock, Store, Gem } from "lucide-react";
+import { ArrowUpCircle, Hammer, Lock, Store, Gem, Zap } from "lucide-react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { GearIcon, RarityBadge, RollBar } from "./item-card";
 import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { CharItem, GearItem, Item, Profile } from "@/lib/types";
-import { STAT_KEYS, STAT_LABEL, TALENT_STATS, GEAR_BY_ID, GEAR_SLOT_STATS, type GearSlot } from "@/shared/catalog";
+import { STAT_KEYS, STAT_LABEL, GEAR_BY_ID, GEAR_SLOT_STATS, type GearSlot } from "@/shared/catalog";
 import { RARITY_INFO } from "@/shared/rarity";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +21,13 @@ const SLOTS: { slot: GearSlot; label: string }[] = [
   { slot: "jersey", label: "Jersey" },
 ];
 
-type CostInfo = { cost: { coins: number; shards: number }; maxed: boolean; shardsOnDismantle: number };
+type CostInfo = {
+  cost: { gems: number };
+  maxed: boolean;
+  gemsOnDismantle: number;
+  instantSell: number;
+  marketValue: number;
+};
 
 function StatBars({ item }: { item: CharItem }) {
   return (
@@ -31,10 +37,7 @@ function StatBars({ item }: { item: CharItem }) {
         return (
           <div key={k}>
             <div className="flex justify-between text-xs">
-              <span className="text-slate-300">
-                {STAT_LABEL[k]}{" "}
-                <span className="text-[10px] uppercase text-slate-500">{TALENT_STATS.includes(k) ? "talent" : "quality"}</span>
-              </span>
+              <span className="text-slate-300">{STAT_LABEL[k]}</span>
               <span className="font-semibold tabular-nums text-white">{Math.round(v)}</span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
@@ -102,15 +105,22 @@ export function ItemDetail({
 
   const dismantle = () =>
     act(async () => {
-      const res = await api<{ shards: number; user: Profile }>(`/items/${item.id}/dismantle`, { method: "POST", idempotent: true });
+      const res = await api<{ gems: number; user: Profile }>(`/items/${item.id}/dismantle`, { method: "POST", idempotent: true });
       onOpenChange(false);
       return res;
-    }, `Dismantled for ${cost?.shardsOnDismantle ?? 0} shards`);
+    }, `Dismantled for ${cost?.gemsOnDismantle ?? 0} gems`);
+
+  const instantSell = () =>
+    act(async () => {
+      const res = await api<{ gems: number; user: Profile }>(`/items/${item.id}/sell`, { method: "POST", idempotent: true });
+      onOpenChange(false);
+      return res;
+    }, `Sold for ${cost?.instantSell ?? 0} gems`);
 
   const equip = (slot: GearSlot, gearId: number | null) =>
     act(() => api(`/items/${item.id}/equip`, { body: { slot, gearId } }), gearId ? "Gear equipped" : "Gear removed");
 
-  const canAfford = cost && user ? user.coins >= cost.cost.coins && user.shards >= cost.cost.shards : false;
+  const canAfford = cost && user ? user.gems >= cost.cost.gems : false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -120,7 +130,7 @@ export function ItemDetail({
             <RarityBadge rarity={item.rarity} /> {item.name}
           </DialogTitle>
           <DialogDescription>
-            {r.label} · Grade {item.grade} · Level {item.level} / {item.levelCap} · Est. value {item.value.toLocaleString()} coins
+            {r.label} · Grade {item.grade} · Level {item.level} / {item.levelCap} · Est. value {item.value.toLocaleString()} gems
           </DialogDescription>
         </DialogHeader>
 
@@ -137,10 +147,11 @@ export function ItemDetail({
           </div>
           <div className="space-y-3">
             <div className="space-y-1">
-              <RollBar label="Talent" value={item.talent} />
-              <RollBar label="Quality" value={item.quality} />
+              {item.kind === "char" ? <RollBar label="Talent" value={item.talent} /> : <RollBar label="Quality" value={item.quality} />}
               <p className="text-[11px] text-slate-500">
-                Talent raises top speed, shot power and physical. Quality raises everything else. Both are permanent and were rolled when this item was pulled.
+                {item.kind === "char"
+                  ? "Talent is permanent and was rolled when this player was pulled. It scales every stat."
+                  : "Quality is permanent and was rolled when this gear was pulled. It scales the gear's boosts."}
               </p>
             </div>
             {item.kind === "char" ? (
@@ -152,7 +163,7 @@ export function ItemDetail({
                 <div className="mt-1 text-xs text-blue-200">
                   <span className="font-semibold">{item.skill.name}:</span> {item.skill.desc}
                 </div>
-                {(item.skill.ability) && (
+                {item.skill.ability && (
                   <div className="mt-2 rounded bg-cyan-500/10 px-2 py-1.5 text-xs text-cyan-100">
                     <span className="font-heading uppercase tracking-wide text-cyan-300">{item.skill.ability.title}</span>
                     <span className="ml-2 text-slate-400">
@@ -196,7 +207,7 @@ export function ItemDetail({
                       <option value="">Empty</option>
                       {options.map((g) => (
                         <option key={g.id} value={g.id}>
-                          [{RARITY_INFO[g.rarity].short}] {g.name} T{g.talent}/Q{g.quality}
+                          [{RARITY_INFO[g.rarity].short || RARITY_INFO[g.rarity].label}] {g.name} Q{g.quality}
                           {g.equippedTo && g.equippedTo !== item.id ? " (equipped elsewhere)" : ""}
                         </option>
                       ))}
@@ -205,7 +216,7 @@ export function ItemDetail({
                 );
               })}
             </div>
-            <p className="mt-1 text-[11px] text-slate-500">Equip three pieces of the same rarity or higher for a set bonus.</p>
+            <p className="mt-1 text-[11px] text-slate-500">Equip three pieces of the same rarity for a set bonus.</p>
           </div>
         )}
 
@@ -214,21 +225,34 @@ export function ItemDetail({
             <Button disabled={busy || item.locked || !canAfford} onClick={levelUp}>
               <ArrowUpCircle /> Level up
               <span className="ml-1 inline-flex items-center gap-1 text-xs opacity-80">
-                <Coins className="size-3.5" />
-                {cost.cost.coins.toLocaleString()} <Gem className="size-3.5" />
-                {cost.cost.shards.toLocaleString()} shards
+                <Gem className="size-3.5" />
+                {cost.cost.gems.toLocaleString()}
               </span>
             </Button>
           ) : cost?.maxed ? (
             <span className="text-sm text-slate-400">Max level for {r.label}</span>
           ) : null}
+          <Button
+            variant="secondary"
+            disabled={busy || item.locked || !cost}
+            onClick={instantSell}
+            title="Sell instantly for 50% of market value"
+          >
+            <Zap /> Instant sell
+            {cost && (
+              <span className="ml-1 inline-flex items-center gap-1 text-xs opacity-80">
+                <Gem className="size-3.5" />
+                {cost.instantSell.toLocaleString()}
+              </span>
+            )}
+          </Button>
           <Button variant="outline" render={<Link href={`/market?sell=${item.id}`} />} nativeButton={false} disabled={item.locked}>
-            <Store /> Sell
+            <Store /> List
           </Button>
           <div className="ml-auto">
             {confirmDismantle ? (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-red-300">Destroy forever for {cost?.shardsOnDismantle ?? "?"} shards?</span>
+                <span className="text-xs text-red-300">Destroy forever for {cost?.gemsOnDismantle ?? "?"} gems?</span>
                 <Button size="sm" variant="destructive" disabled={busy} onClick={dismantle}>
                   Confirm
                 </Button>

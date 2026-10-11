@@ -99,7 +99,7 @@ async function main() {
   }
 
   const aChars = (await a.req<{ items: { id: number; kind: string }[] }>("GET", "/collection")).items.filter((i) => i.kind === "char");
-  const tr = await a.req<{ id: number }>("POST", "/trades", { to: `rin_${tag}`, offerItems: [aChars[0].id], offerCoins: 10, requestItems: [], requestCoins: 0 }, true);
+  const tr = await a.req<{ id: number }>("POST", "/trades", { to: `rin_${tag}`, offerItems: [aChars[0].id], requestItems: [] }, true);
   const locked = (await a.req<{ items: { id: number; locked: boolean }[] }>("GET", "/collection")).items.find((i) => i.id === aChars[0].id)!;
   ok(locked.locked, "offered item is locked in escrow");
   await b.req("POST", `/trades/${tr.id}/accept`, undefined, true);

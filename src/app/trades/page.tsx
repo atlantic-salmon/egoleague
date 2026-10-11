@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Check, Coins, Inbox, Send, X } from "lucide-react";
+import { ArrowLeftRight, Check, Inbox, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/auth-card";
 import { PageHeader, Loading, ErrorState, Empty } from "@/components/states";
@@ -30,7 +30,7 @@ interface Trade {
 
 const MAX = 6;
 
-function Side({ title, items, coins }: { title: string; items: (Item | null)[]; coins: number }) {
+function Side({ title, items }: { title: string; items: (Item | null)[] }) {
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-1 text-xs uppercase tracking-wide text-slate-400">{title}</div>
@@ -46,13 +46,7 @@ function Side({ title, items, coins }: { title: string; items: (Item | null)[]; 
             </div>
           ),
         )}
-        {coins > 0 && (
-          <div className="flex h-24 w-28 flex-col items-center justify-center rounded-xl border border-amber-400/30 bg-amber-500/10 text-amber-200">
-            <Coins className="size-6" />
-            <span className="text-sm font-semibold">{coins.toLocaleString()}</span>
-          </div>
-        )}
-        {!items.length && !coins && <span className="text-sm text-slate-500">Nothing</span>}
+        {!items.length && <span className="text-sm text-slate-500">Nothing</span>}
       </div>
     </div>
   );
@@ -117,9 +111,9 @@ function TradeList({ reloadKey }: { reloadKey: number }) {
               )}
             </div>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <Side title={mine ? "You give" : `${t.from} gives`} items={t.offerItems} coins={t.offerCoins} />
+              <Side title={mine ? "You give" : `${t.from} gives`} items={t.offerItems} />
               <ArrowLeftRight className="mx-auto size-5 shrink-0 text-slate-500" />
-              <Side title={mine ? `${t.to} gives` : "You give"} items={t.requestItems} coins={t.requestCoins} />
+              <Side title={mine ? `${t.to} gives` : "You give"} items={t.requestItems} />
             </div>
           </div>
         );
@@ -146,8 +140,6 @@ function Composer({ onSent }: { onSent: () => void }) {
   const [theirs, setTheirs] = useState<{ username: string; items: Item[] } | null>(null);
   const [offer, setOffer] = useState<number[]>([]);
   const [request, setRequest] = useState<number[]>([]);
-  const [offerCoins, setOfferCoins] = useState("");
-  const [requestCoins, setRequestCoins] = useState("");
   const [busy, setBusy] = useState(false);
 
   const lookup = async () => {
@@ -170,7 +162,7 @@ function Composer({ onSent }: { onSent: () => void }) {
     setBusy(true);
     try {
       await api("/trades", {
-        body: { to: theirs.username, offerItems: offer, offerCoins: Number(offerCoins) || 0, requestItems: request, requestCoins: Number(requestCoins) || 0 },
+        body: { to: theirs.username, offerItems: offer, requestItems: request },
         idempotent: true,
       });
       const me = await api<{ user: Profile }>("/me");
@@ -178,8 +170,6 @@ function Composer({ onSent }: { onSent: () => void }) {
       toast.success(`Trade sent to ${theirs.username}`);
       setOffer([]);
       setRequest([]);
-      setOfferCoins("");
-      setRequestCoins("");
       await mineRes.reload();
       onSent();
     } catch (e) {
@@ -209,33 +199,21 @@ function Composer({ onSent }: { onSent: () => void }) {
         <>
           <div className="grid gap-4 lg:grid-cols-2">
             <div>
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-slate-300">
-                  You give ({offer.length}/{MAX})
-                </span>
-                <div className="flex items-center gap-1">
-                  <Coins className="size-4 text-amber-300" />
-                  <Input className="h-8 w-28" inputMode="numeric" placeholder="0 coins" value={offerCoins} onChange={(e) => setOfferCoins(e.target.value.replace(/\D/g, "").slice(0, 8))} />
-                </div>
+              <div className="mb-2 text-sm text-slate-300">
+                You give ({offer.length}/{MAX})
               </div>
               {mineRes.loading && !mineRes.data ? <Loading /> : <Picker items={myItems} selected={offer} toggle={toggle(offer, setOffer)} empty="No tradeable items" />}
             </div>
             <div>
-              <div className="mb-2 flex items-center justify-between text-sm">
-                <span className="text-slate-300">
-                  {theirs.username} gives ({request.length}/{MAX})
-                </span>
-                <div className="flex items-center gap-1">
-                  <Coins className="size-4 text-amber-300" />
-                  <Input className="h-8 w-28" inputMode="numeric" placeholder="0 coins" value={requestCoins} onChange={(e) => setRequestCoins(e.target.value.replace(/\D/g, "").slice(0, 8))} />
-                </div>
+              <div className="mb-2 text-sm text-slate-300">
+                {theirs.username} gives ({request.length}/{MAX})
               </div>
               <Picker items={theirs.items} selected={request} toggle={toggle(request, setRequest)} empty={`${theirs.username} has nothing tradeable`} />
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">Your offered items and coins are held in escrow until the trade is accepted, declined or cancelled.</p>
-            <Button disabled={busy || (!offer.length && !request.length) || (Number(offerCoins) || 0) > (user?.coins ?? 0)} onClick={send}>
+            <p className="text-xs text-slate-500">Trades are items only. Offered items stay locked until the trade is accepted, declined or cancelled.</p>
+            <Button disabled={busy || (!offer.length && !request.length)} onClick={send}>
               <Send /> Send offer
             </Button>
           </div>

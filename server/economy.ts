@@ -117,12 +117,12 @@ export function rollStat(rarity: Rarity) {
   return Math.round((a + b + c) / 3);
 }
 
-/** Creates an item with server-rolled, permanent Talent and Quality. Must run inside tx(). */
+/** Creates an item. Characters roll Talent only; gear rolls Quality only. Must run inside tx(). */
 export function createItem(ownerId: number, kind: "char" | "gear", templateId: string, origin: string) {
   const rarity = (kind === "char" ? VARIANT_BY_ID[templateId]?.rarity : GEAR_BY_ID[templateId]?.rarity) as Rarity;
   if (!rarity) throw new Error("unknown template " + templateId);
-  const talent = rollStat(rarity);
-  const quality = rollStat(rarity);
+  const talent = kind === "char" ? rollStat(rarity) : 50;
+  const quality = kind === "gear" ? rollStat(rarity) : 50;
   const r = run(
     "INSERT INTO items(owner_id, kind, template_id, rarity, talent, quality, level, origin, created_at) VALUES (?,?,?,?,?,?,1,?,?)",
     ownerId,
@@ -148,7 +148,7 @@ export function gearFor(charItemId: number) {
 }
 
 export function itemView(it: ItemRow, gear?: ItemRow[]) {
-  const value = estimateValue(it.rarity, it.talent, it.quality, it.level, T);
+  const value = estimateValue(it.rarity, it.talent, it.quality, it.level, T, it.kind);
   const base = {
     id: it.id,
     kind: it.kind,
@@ -156,8 +156,8 @@ export function itemView(it: ItemRow, gear?: ItemRow[]) {
     rarity: it.rarity,
     talent: it.talent,
     quality: it.quality,
-    grade: grade(it.talent, it.quality),
-    perfect: isPerfect(it.talent, it.quality),
+    grade: grade(it.talent, it.quality, it.kind),
+    perfect: isPerfect(it.talent, it.quality, it.kind),
     level: it.level,
     levelCap: levelCap(it.rarity),
     locked: !!it.locked_by,

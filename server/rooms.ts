@@ -254,9 +254,9 @@ function finishRoom(room: Room, forfeitBy: number | null) {
           if (s.phase === 3 && getCounter(uid, "social_rewarded") < T.economy.friendlyDailyRewardedMatches) {
             bumpCounter(uid, "social_rewarded");
             const mult = rewardMult(uid);
-            r.coins = Math.round((T.economy.friendlyCoinsPerMatch + goals * T.economy.friendlyCoinsPerGoal) * mult);
+            r.gems = Math.round((T.economy.friendlyGemsPerMatch + goals * T.economy.friendlyGemsPerGoal) * mult);
             r.xp = Math.round(30 * mult);
-            applyDelta(uid, { coins: r.coins }, "match_friendly", room.id, { score });
+            applyDelta(uid, { gems: r.gems }, "match_friendly", room.id, { score });
             grantXp(uid, r.xp);
           } else {
             r.note = s.phase === 3 ? "Daily friendly reward limit reached" : "Match abandoned";
@@ -301,8 +301,8 @@ function finishRoom(room: Room, forfeitBy: number | null) {
           const loss = res === 0;
           const mult = rewardMult(uid);
           const r: MatchRewardView = {
-            coins: rated ? Math.round((win ? T.economy.rankedWinCoins : T.economy.rankedLossCoins) * mult) : 0,
-            gems: rated && win ? T.economy.rankedWinGems : 0,
+            coins: 0,
+            gems: rated ? Math.round((win ? T.economy.rankedWinGems : T.economy.rankedLossGems) * mult) : 0,
             xp: Math.round((win ? 80 : 30) * mult),
             ratingDelta: delta,
             note: rated ? undefined : "Unrated: too many matches against the same player today",
@@ -319,7 +319,7 @@ function finishRoom(room: Room, forfeitBy: number | null) {
             goals,
             uid,
           );
-          if (r.coins || r.gems) applyDelta(uid, { coins: r.coins, gems: r.gems }, "match_ranked", room.id, { score });
+          if (r.gems) applyDelta(uid, { gems: r.gems }, "match_ranked", room.id, { score });
           grantXp(uid, r.xp);
           if (win) {
             questEvent(uid, "ranked_win", 1);

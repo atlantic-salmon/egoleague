@@ -2,7 +2,7 @@ import { z } from "zod";
 import { route, fail } from "../http";
 import { all, get, run, tx, today } from "../db";
 import { T, applyDelta, flag, getUser, itemView, ownedItem, publicProfile, questEvent, removeFromTeams, transferItem, type ItemRow } from "../economy";
-import { grade } from "@/shared/stats";
+import { grade as gradeRoll } from "@/shared/stats";
 import { RARITIES, isRarity } from "@/shared/rarity";
 import { onlineUsers, lobbyForUser } from "../rooms";
 
@@ -100,7 +100,7 @@ route("GET", "/market/history/:templateId", { auth: false }, ({ params }) => {
     params.templateId.slice(0, 40),
   );
   const avg = rows.length ? Math.round(rows.reduce((s, r) => s + r.price, 0) / rows.length) : null;
-  return { sales: rows.map((r) => ({ ...r, grade: grade(r.talent, r.quality) })), avg };
+  return { sales: rows.map((r) => ({ ...r, grade: gradeRoll(r.talent, r.quality) })), avg };
 });
 
 route(
@@ -120,7 +120,7 @@ route(
         const chars = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char' AND locked_by IS NULL", user.id)!.n;
         if (chars <= 1) fail(400, "Keep at least one player you can play with");
       }
-      applyDelta(user.id, { coins: -fee }, "market_fee", String(it.id), { price: body.price }, it.id);
+      applyDelta(user.id, { gems: -fee }, "market_fee", String(it.id), { price: body.price }, it.id);
       const r = run(
         "INSERT INTO listings(seller_id, item_id, price, fee, status, created_at) VALUES (?,?,?,?, 'active', ?)",
         user.id,
@@ -146,13 +146,13 @@ route("POST", "/market/:id/buy", { rate: [20, 10_000], idempotent: true }, ({ us
     if (!l || l.status !== "active") fail(410, "That listing is no longer available");
     if (l!.seller_id === user.id) fail(400, "You can't buy your own listing");
     const buyer = getUser(user.id);
-    if (buyer.coins < l!.price) fail(400, "Not enough coins");
+    if (buyer.gems < l!.price) fail(400, "Not enough gems");
     const it = get<ItemRow>("SELECT * FROM items WHERE id = ?", l!.item_id);
     if (!it || it.owner_id !== l!.seller_id || it.locked_by !== `listing:${l!.id}`) fail(409, "Listing is invalid");
     checkPair(user.id, l!.seller_id);
     const tax = Math.floor((l!.price * T.economy.marketTaxPct) / 100);
-    applyDelta(user.id, { coins: -l!.price }, "market_buy", `listing:${l!.id}`, null, it!.id);
-    applyDelta(l!.seller_id, { coins: l!.price - tax }, "market_sale", `listing:${l!.id}`, { tax }, it!.id);
+    applyDelta(user.id, { gems: -l!.price }, "market_buy", `listing:${l!.id}`, null, it!.id);
+    applyDelta(l!.seller_id, { gems: l!.price - tax }, "market_sale", `listing:${l!.id}`, { tax }, it!.id);
     transferItem(it!.id, l!.seller_id, user.id, `listing:${l!.id}`);
     const r = run("UPDATE listings SET status = 'sold', buyer_id = ?, closed_at = ? WHERE id = ? AND status = 'active'", user.id, Date.now(), l!.id);
     if (Number(r.changes) !== 1) fail(409, "Listing changed, try again");
@@ -198,9 +198,9 @@ route(
     body: z.object({
       to: z.string().trim().min(3).max(16),
       offerItems: ids,
-      offerCoins: z.number().int().min(0).max(50_000_000),
+      offerCoins: z.number().int().min(0).max(0).optional().default(0),
       requestItems: ids,
-      requestCoins: z.number().int().min(0).max(50_000_000),
+      requestCoins: z.number().int().min(0).max(0).optional().default(0),
     }),
     rate: [10, 60_000],
     idempotent: true,
@@ -221,9 +221,9 @@ route(
         user.id,
         to!.id,
         JSON.stringify(body.offerItems),
-        body.offerCoins,
+        0,
         JSON.stringify(body.requestItems),
-        body.requestCoins,
+        0,
         Date.now(),
       );
       const tid = Number(r.lastInsertRowid);
@@ -232,7 +232,6 @@ route(
         run("UPDATE items SET locked_by = ?, equipped_to = NULL, equip_slot = NULL WHERE id = ?", `trade:${tid}`, iid);
         removeFromTeams(user.id, iid);
       }
-      if (body.offerCoins > 0) applyDelta(user.id, { coins: -body.offerCoins }, "trade_escrow", `trade:${tid}`);
       return tid;
     });
     return { id };
@@ -255,7 +254,7 @@ interface TradeRow {
 function releaseTrade(t: TradeRow, status: "declined" | "cancelled" | "failed") {
   run("UPDATE trades SET status = ?, closed_at = ? WHERE id = ? AND status = 'pending'", status, Date.now(), t.id);
   run("UPDATE items SET locked_by = NULL WHERE locked_by = ?", `trade:${t.id}`);
-  if (t.offer_coins > 0) applyDelta(t.from_id, { coins: t.offer_coins }, "trade_refund", `trade:${t.id}`);
+  void t.offer_coins;
 }
 
 function tradeView(t: TradeRow) {
@@ -302,15 +301,9 @@ route("POST", "/trades/:id/accept", { rate: [10, 10_000], idempotent: true }, ({
     if (myChars - request.filter(isChar).length + offer.filter(isChar).length < 1) fail(400, "You'd be left with no players");
     const theirChars = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char' AND locked_by IS NULL", t!.from_id)!.n;
     if (theirChars + request.filter(isChar).length < 1) fail(400, "The other player would be left with no players");
-    if (getUser(user.id).coins < t!.request_coins) fail(400, "Not enough coins to accept");
     checkPair(t!.from_id, t!.to_id);
     for (const iid of offer) transferItem(iid, t!.from_id, user.id, `trade:${t!.id}`);
     for (const iid of request) transferItem(iid, user.id, t!.from_id, `trade:${t!.id}`);
-    if (t!.offer_coins > 0) applyDelta(user.id, { coins: t!.offer_coins }, "trade_in", `trade:${t!.id}`);
-    if (t!.request_coins > 0) {
-      applyDelta(user.id, { coins: -t!.request_coins }, "trade_out", `trade:${t!.id}`);
-      applyDelta(t!.from_id, { coins: t!.request_coins }, "trade_in", `trade:${t!.id}`);
-    }
     run("UPDATE trades SET status = 'accepted', closed_at = ? WHERE id = ?", Date.now(), t!.id);
   });
   return { ok: true, user: publicProfile(getUser(user.id)) };

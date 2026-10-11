@@ -4,8 +4,10 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
 
 ## Features
 
-- **Isagi's Path (story mode):** 8 stages across 4 chapters (First Selection, Second Selection, U-20 Japan, Neo Egoist League). Each stage has an objective, star ratings, first-clear rewards, and animated cutscenes before and after the match. Cutscenes include portraits, typewriter text, speed lines, Metavision, flashes and shakes.
-- **Abilities:** every skill has an activatable technique (Q / U / gamepad Y). Activating plays a short on-screen cutscene with your portrait, ability title and FX (Metavision grid, speed lines, impact flash, etc.), then applies a timed effect such as a speed burst, untackleable dribble, forced charged shot, ball steal or opponent stun.
+- **Isagi's Path (story mode):** 8 stages across 4 chapters with fixed preset lineups (your collection is not used here). Each stage has an objective, star ratings, first-clear gem rewards, and animated cutscenes.
+- **League:** climb an escalating ladder of AI teams with your own collection lineup. Beat a side to unlock the next; any unlocked team can be replayed for smaller gem rewards.
+- **Abilities:** every skill has an activatable technique (Q / U / gamepad Y). The ability banner slides in from the left, holds, then exits off the right. Players also talk during matches with short banter bubbles.
+- **Camera:** the pitch is larger than the viewport. The camera follows you and zooms around the play.
 - **Character portraits:** each character (including Blue Lock Man and Ego) has an AI-generated profile image under `public/portraits/`. The UI uses those images and falls back to the vector bust if a file is missing.
 - **Movement:** there is no sprint key. Players wind up to top speed over time. How fast depends on the character's Acceleration, and sharp turns bleed momentum based on Agility. Hold shoot to charge a shot. Pressing shoot without the ball is a tackle.
 - **Blue Lock Man goalkeeper:** an AI keeper that tracks the ball, dives, saves or parries shots, rushes out on through balls, and distributes the ball.
@@ -13,19 +15,20 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
   - Characters come in several versions, such as Isagi (Base), Isagi (Team Z) and Isagi (Bastard München).
   - Gear (boots, headband, jersey) uses the same rarities. World Class and #1 gear have unique names, such as *Metavision Lens* and *Crown of the Striker*.
   - Pity: Legendary or better is guaranteed within 70 pulls, and #1 within 500. Every 10-pull includes at least one Rare or better.
-- **Talent and Quality:** every item rolls Talent (0-100) and Quality (0-100) on the server when it's pulled. These rolls are permanent. Talent scales Top Speed, Shot Power and Physical. Quality scales everything else. Both rolls also set the item's grade (S to D) and its market value.
+- **Talent / Quality:** characters roll Talent only (scales all player stats). Gear rolls Quality only (scales gear boosts). Rolls are permanent and set grade (S–D) and market value. Legendary rarity shows a gold chip with no "L" letter.
 - **Teams:** save up to 8 lineups with formations. You can only use players you own, and a player that's locked in a trade or listing can't be used. Each team can include only one version of each character.
 - **Play modes:**
   - **Local 2P:** two players on one keyboard, head to head or co-op against bots. No account needed.
   - **Friendly lobbies:** play online from different laptops with any mix of friends and bots on each side, up to 5v5. The host controls the settings.
   - **Ranked:** a 3v3 queue with Elo rating.
   - **Ghost matches:** play against a friend's saved team, even when they're offline.
-- **Economy:**
-  - Quests: daily quests and lifetime milestones.
-  - Leaderboards: rating, story stars and goals.
+- **Economy (gems only):**
+  - New accounts start with the base 5 players and gems — no coins, no starter gear.
+  - Quests, match rewards, market prices, listing fees and level-ups all use gems.
+  - Instant sell: sell any unlocked item for 50% of its estimated market value in gems.
   - Market: listing fee and sale tax, with price history.
-  - Trades: offered items and coins are held in escrow until the trade is accepted, declined or cancelled.
-  - Friends list.
+  - Trades: item-only escrow until accepted, declined or cancelled.
+  - Friends list and leaderboards (rating, story stars, goals).
 - **Pacing:** the early game moves fast. Rewards are boosted until level 9, and early story stages run at a faster tempo. The late game is a grind: level upgrade costs grow exponentially, stat gains from levels have diminishing returns, and top-rarity drops are rare and protected by long pity counters.
 
 ## Running locally
@@ -65,7 +68,7 @@ The server is the only source of truth. The browser never decides what you own o
 
 - **Accounts:** passwords are hashed with scrypt. Sessions are random tokens, stored only as SHA-256 hashes, in an httpOnly SameSite cookie. WebSocket connections use single-use tickets that expire after 60 seconds.
 - **API protection:** every mutating request needs a custom header and a matching Origin, which blocks CSRF. Request bodies are validated with zod and size-limited. Every route is rate-limited. Pulls, purchases, trades, level-ups and match submissions require an `Idempotency-Key`, so retries can't double-spend.
-- **Database guarantees (SQLite):** CHECK constraints keep coins, gems and shards from going negative. Triggers make Talent, Quality, rarity and template immutable after an item is created. Original rolls are also copied into an append-only table, and every currency change goes to an append-only ledger. All multi-step changes run inside `BEGIN IMMEDIATE` transactions.
+- **Database guarantees (SQLite):** CHECK constraints keep currency balances from going negative. Triggers make Talent, Quality, rarity and template immutable after an item is created. Original rolls are also copied into an append-only table, and every currency change goes to an append-only ledger. All multi-step changes run inside `BEGIN IMMEDIATE` transactions.
 - **Gacha:** rolls use `crypto.randomInt` on the server, and pity counters are stored server-side.
 - **Story and ghost matches:** the server issues a ticket containing the match seed and lineups. The client uploads only its compressed input log, and the server replays the deterministic engine to compute the real score. Tickets are single-use, expire, and are rejected if submitted faster than the match could actually be played. A claimed score that doesn't match the replay gets flagged.
 - **Online matches:** the server runs the simulation. Clients only send button states and render server snapshots.
