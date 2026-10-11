@@ -32,207 +32,205 @@ function sortReveal(items: Item[]) {
   return [...items].sort((a, b) => rarityIndex(a.rarity) - rarityIndex(b.rarity));
 }
 
-function RevealCard({ item, hero, multi }: { item: Item; hero?: boolean; multi?: boolean }) {
-  const info = RARITY_INFO[item.rarity];
-  const high = isLegendaryPlus(item.rarity);
-  return (
-    <motion.div
-      className={cn("relative", hero && "mx-auto max-w-xs sm:max-w-sm")}
-      initial={hero ? { scale: 0.4, rotateY: 90, opacity: 0 } : { rotateY: 180, opacity: 0, y: 40, scale: 0.85 }}
-      animate={hero ? { scale: [0.4, 1.12, 1], rotateY: [90, -8, 0], opacity: 1 } : { rotateY: 0, opacity: 1, y: 0, scale: 1 }}
-      transition={{ type: "spring", stiffness: hero ? 140 : 200, damping: hero ? 14 : 16 }}
-      style={{ transformStyle: "preserve-3d" }}
-    >
-      {high && (
-        <motion.div
-          className="pointer-events-none absolute inset-0 -z-10 rounded-2xl"
-          style={{ boxShadow: `0 0 80px 20px ${info.glow}` }}
-          animate={{ opacity: [0.45, 0.9, 0.55], scale: [0.96, 1.04, 1] }}
-          transition={{ duration: 1.4, repeat: Infinity }}
-        />
-      )}
-      {info.rainbow && (
-        <motion.div
-          className="pointer-events-none absolute -inset-1 -z-10 rounded-2xl opacity-80"
-          style={{
-            background: "conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)",
-            filter: "blur(10px)",
-          }}
-          animate={{ rotate: 360 }}
-          transition={{ duration: 4, ease: "linear", repeat: Infinity }}
-        />
-      )}
-      <ItemCard item={item} compact={!!multi && !hero} />
-    </motion.div>
-  );
-}
-
 function Reveal({ items, onClose }: { items: Item[]; onClose: () => void }) {
   const ordered = useMemo(() => sortReveal(items), [items]);
   const best = ordered.reduce((b, it) => (rarityIndex(it.rarity) > rarityIndex(b) ? it.rarity : b), "C" as Rarity);
   const info = RARITY_INFO[best];
   const multi = ordered.length > 1;
   const high = isLegendaryPlus(best);
-  const [stage, setStage] = useState<"charge" | "burst" | "focus" | "grid">("charge");
-  const [focusIdx, setFocusIdx] = useState(0);
-  const [shown, setShown] = useState(0);
+
+  // charge → (multi: one-by-one) → summary grid
+  const [phase, setPhase] = useState<"charge" | "one" | "summary">(multi ? "charge" : "charge");
+  const [idx, setIdx] = useState(-1); // index into ordered currently spotlighted; -1 = not yet
+  const [summaryReady, setSummaryReady] = useState(false);
 
   useEffect(() => {
     uiBlip("pull");
-    const t1 = setTimeout(() => setStage("burst"), high ? 1600 : 900);
-    const t2 = setTimeout(() => setStage(multi ? "focus" : "grid"), high ? 2300 : 1400);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
-  }, [high, multi]);
+    const chargeMs = high ? 1800 : 1000;
+    const t = setTimeout(() => {
+      if (multi) {
+        setPhase("one");
+        setIdx(0);
+      } else {
+        setPhase("summary");
+        setSummaryReady(true);
+        uiBlip(isLegendaryPlus(ordered[0].rarity) ? "rare" : "reveal");
+      }
+    }, chargeMs);
+    return () => clearTimeout(t);
+  }, [high, multi, ordered]);
 
-  // x10: one dramatic focus reveal at a time, commons faster, legendaries linger.
   useEffect(() => {
-    if (stage !== "focus" || !multi) return;
-    if (focusIdx >= ordered.length) {
-      const t = setTimeout(() => setStage("grid"), 420);
-      return () => clearTimeout(t);
-    }
-    const it = ordered[focusIdx];
+    if (phase !== "one" || idx < 0 || idx >= ordered.length) return;
+    const it = ordered[idx];
     const rare = rarityIndex(it.rarity) >= rarityIndex("L");
     uiBlip(rare ? "rare" : "reveal");
-    const hold = rare ? 900 : rarityIndex(it.rarity) >= rarityIndex("E") ? 520 : 280;
-    const t = setTimeout(() => setFocusIdx((n) => n + 1), hold);
+    const hold = rare ? 950 : rarityIndex(it.rarity) >= rarityIndex("E") ? 560 : 300;
+    const t = setTimeout(() => {
+      if (idx + 1 >= ordered.length) {
+        setPhase("summary");
+        setSummaryReady(true);
+      } else {
+        setIdx(idx + 1);
+      }
+    }, hold);
     return () => clearTimeout(t);
-  }, [stage, focusIdx, ordered, multi]);
-
-  useEffect(() => {
-    if (stage !== "grid") return;
-    if (!multi) {
-      setShown(1);
-      uiBlip(isLegendaryPlus(ordered[0].rarity) ? "rare" : "reveal");
-      return;
-    }
-    setShown(ordered.length);
-  }, [stage, multi, ordered]);
+  }, [phase, idx, ordered]);
 
   const skip = () => {
-    if (stage === "charge" || stage === "burst") setStage(multi ? "focus" : "grid");
-    else if (stage === "focus" && focusIdx < ordered.length) setFocusIdx(ordered.length);
-    else if (stage === "focus") setStage("grid");
-    else if (shown < ordered.length) setShown(ordered.length);
+    if (phase === "charge") {
+      if (multi) {
+        setPhase("one");
+        setIdx(0);
+      } else {
+        setPhase("summary");
+        setSummaryReady(true);
+      }
+      return;
+    }
+    if (phase === "one") {
+      if (idx < ordered.length - 1) setIdx(ordered.length - 1);
+      else {
+        setPhase("summary");
+        setSummaryReady(true);
+      }
+    }
   };
 
-  const focusItem = multi && stage === "focus" && focusIdx > 0 ? ordered[focusIdx - 1] : null;
-  const done = stage === "grid" && shown >= ordered.length;
+  const current = phase === "one" && idx >= 0 ? ordered[idx] : null;
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto bg-slate-950/96 p-4" onClick={skip}>
       <div className="speedlines pointer-events-none absolute inset-0 opacity-25" />
-      <motion.div
-        className="pointer-events-none absolute inset-0"
-        style={{ background: `radial-gradient(circle at 50% 40%, ${info.glow}, transparent 55%)` }}
-        animate={{ opacity: stage === "burst" ? 1 : 0.35 }}
-      />
+      <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 50% 42%, ${info.glow}, transparent 58%)` }} />
 
       <AnimatePresence mode="wait">
-        {(stage === "charge" || stage === "burst") && (
-          <motion.div key="orb" className="relative flex flex-col items-center" exit={{ scale: 2.4, opacity: 0, filter: "blur(8px)" }} transition={{ duration: 0.35 }}>
+        {phase === "charge" && (
+          <motion.div key="charge" className="relative flex flex-col items-center" exit={{ scale: 2.2, opacity: 0, filter: "blur(10px)" }} transition={{ duration: 0.3 }}>
             <motion.div
-              className="absolute size-64 rounded-full sm:size-80"
-              style={{ background: `conic-gradient(from 0deg, ${info.color}, transparent, ${info.color})` }}
-              animate={{ rotate: 360, scale: stage === "burst" ? [1, 1.4, 0.2] : 1, opacity: stage === "burst" ? [0.7, 1, 0] : 0.55 }}
-              transition={{ rotate: { duration: 1.2, repeat: Infinity, ease: "linear" }, scale: { duration: 0.55 }, opacity: { duration: 0.55 } }}
+              className="absolute size-72 rounded-full sm:size-96"
+              style={{ background: `conic-gradient(from 0deg, ${info.color}, transparent 40%, ${info.color})` }}
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1.1, repeat: Infinity, ease: "linear" }}
             />
             <motion.div
-              className="relative size-36 rounded-full sm:size-48"
-              style={{ background: `radial-gradient(circle at 35% 30%, #fff, ${info.color} 40%, #020617 78%)`, boxShadow: `0 0 140px 40px ${info.glow}` }}
-              initial={{ scale: 0.15 }}
-              animate={{ scale: stage === "burst" ? [1, 1.35, 0.1] : [0.15, 1.05, 0.95, 1], rotate: high ? 540 : 280 }}
-              transition={{ duration: high ? 1.5 : 0.9, ease: "easeInOut" }}
+              className="relative size-40 rounded-full sm:size-52"
+              style={{ background: `radial-gradient(circle at 35% 30%, #fff, ${info.color} 42%, #020617 78%)`, boxShadow: `0 0 140px 40px ${info.glow}` }}
+              initial={{ scale: 0.12 }}
+              animate={{ scale: [0.12, 1.08, 0.96, 1.05], rotate: high ? 540 : 300 }}
+              transition={{ duration: high ? 1.6 : 0.95, ease: "easeInOut" }}
             />
             {high && (
               <motion.div
                 className="mt-8 font-heading text-4xl uppercase italic text-glow sm:text-5xl"
-                initial={{ opacity: 0, letterSpacing: "1.2em", y: 12 }}
-                animate={{ opacity: 1, letterSpacing: "0.18em", y: 0 }}
-                transition={{ delay: 0.55, duration: 0.75 }}
+                initial={{ opacity: 0, letterSpacing: "1.1em", y: 14 }}
+                animate={{ opacity: 1, letterSpacing: "0.16em", y: 0 }}
+                transition={{ delay: 0.5, duration: 0.7 }}
                 style={{ color: info.color }}
               >
                 {info.label} pull
               </motion.div>
             )}
             {multi && (
-              <motion.p className="mt-3 text-xs uppercase tracking-[0.35em] text-slate-400" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+              <motion.p className="mt-3 text-xs uppercase tracking-[0.35em] text-slate-300" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
                 10-pull sequence
               </motion.p>
             )}
           </motion.div>
         )}
 
-        {stage === "focus" && multi && (
-          <motion.div key={`focus-${focusIdx}`} className="relative w-full max-w-md" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, scale: 0.9 }}>
-            <div className="mb-4 text-center text-xs uppercase tracking-[0.3em] text-slate-400">
-              Card {Math.min(focusIdx, ordered.length)} / {ordered.length}
+        {phase === "one" && current && (
+          <motion.div
+            key={`one-${current.id}-${idx}`}
+            className="relative w-full max-w-sm"
+            initial={{ opacity: 0, y: 28, scale: 0.7, rotateY: 70 }}
+            animate={{ opacity: 1, y: 0, scale: 1, rotateY: 0 }}
+            exit={{ opacity: 0, scale: 0.85, y: -20 }}
+            transition={{ type: "spring", stiffness: 160, damping: 16 }}
+            style={{ perspective: 900 }}
+          >
+            <div className="mb-3 text-center text-xs uppercase tracking-[0.3em] text-slate-400">
+              Card {idx + 1} / {ordered.length}
             </div>
-            {focusItem ? (
-              <RevealCard item={focusItem} hero />
-            ) : (
-              <div className="grid h-64 place-items-center text-slate-500">Charging reveal...</div>
+            {isLegendaryPlus(current.rarity) && (
+              <>
+                <motion.div
+                  className="pointer-events-none absolute -inset-6 -z-10 rounded-3xl"
+                  style={{ boxShadow: `0 0 90px 24px ${RARITY_INFO[current.rarity].glow}` }}
+                  animate={{ opacity: [0.4, 0.95, 0.5], scale: [0.95, 1.05, 1] }}
+                  transition={{ duration: 1.2, repeat: Infinity }}
+                />
+                {RARITY_INFO[current.rarity].rainbow && (
+                  <motion.div
+                    className="pointer-events-none absolute -inset-2 -z-10 rounded-2xl"
+                    style={{
+                      background: "conic-gradient(from 0deg, #ef4444, #f97316, #eab308, #22c55e, #06b6d4, #3b82f6, #a855f7, #ef4444)",
+                      filter: "blur(12px)",
+                      opacity: 0.75,
+                    }}
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 3.5, ease: "linear", repeat: Infinity }}
+                  />
+                )}
+                <motion.div
+                  className="mb-2 text-center font-heading text-3xl uppercase italic"
+                  style={{ color: RARITY_INFO[current.rarity].color }}
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                >
+                  {RARITY_INFO[current.rarity].label}!
+                </motion.div>
+              </>
             )}
-            {focusItem && isLegendaryPlus(focusItem.rarity) && (
-              <motion.div
-                className="mt-4 text-center font-heading text-3xl uppercase italic"
-                style={{ color: RARITY_INFO[focusItem.rarity].color }}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-              >
-                {RARITY_INFO[focusItem.rarity].label}!
-              </motion.div>
-            )}
-            {focusItem?.kind === "char" && focusItem.traits.length > 0 && rarityIndex(focusItem.rarity) >= rarityIndex("E") && (
-              <motion.div className="mt-3 rounded-xl border border-white/10 bg-slate-900/85 p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                <TraitChips traits={focusItem.traits} className="justify-center" />
-              </motion.div>
+            <ItemCard item={current} />
+            {current.kind === "char" && current.traits.length > 0 && rarityIndex(current.rarity) >= rarityIndex("E") && (
+              <div className="mt-3 rounded-xl border border-white/10 bg-slate-900/85 p-3">
+                <TraitChips traits={current.traits} className="justify-center" />
+              </div>
             )}
           </motion.div>
         )}
 
-        {stage === "grid" && (
-          <motion.div key="cards" className="relative w-full max-w-5xl" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+        {phase === "summary" && (
+          <motion.div key="summary" className="relative w-full max-w-5xl" initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
             {multi && (
-              <motion.div className="mb-4 text-center font-heading text-2xl uppercase italic text-white sm:text-3xl" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                Scout results
-              </motion.div>
+              <div className="mb-4 text-center font-heading text-2xl uppercase italic text-white sm:text-3xl">Scout results</div>
             )}
             <div className={cn("grid gap-3", ordered.length === 1 ? "mx-auto max-w-56 grid-cols-1" : "grid-cols-2 sm:grid-cols-3 md:grid-cols-5")}>
               {ordered.map((it, i) => (
                 <motion.div
                   key={it.id}
-                  initial={multi ? { opacity: 0.35, scale: 0.92 } : { opacity: 0 }}
-                  animate={i < shown ? { opacity: 1, scale: 1 } : { opacity: 0.25, scale: 0.9 }}
-                  transition={{ delay: multi ? i * 0.04 : 0, type: "spring", stiffness: 220, damping: 18 }}
+                  initial={{ opacity: 0, y: 16, scale: 0.9 }}
+                  animate={summaryReady ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0.2 }}
+                  transition={{ delay: multi ? i * 0.05 : 0, type: "spring", stiffness: 220, damping: 18 }}
                   className={cn(isLegendaryPlus(it.rarity) && "z-10")}
                 >
-                  <RevealCard item={it} multi={multi} hero={!multi} />
+                  <div className="relative">
+                    {isLegendaryPlus(it.rarity) && (
+                      <div className="pointer-events-none absolute -inset-1 rounded-xl" style={{ boxShadow: `0 0 28px 4px ${RARITY_INFO[it.rarity].glow}` }} />
+                    )}
+                    <ItemCard item={it} compact={multi} />
+                  </div>
                 </motion.div>
               ))}
             </div>
-            {done && !multi && ordered[0].kind === "char" && ordered[0].traits.length > 0 && (
+            {!multi && ordered[0].kind === "char" && ordered[0].traits.length > 0 && (
               <motion.div className="mx-auto mt-4 max-w-md rounded-xl border border-white/10 bg-slate-900/80 p-3" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="mb-2 text-center text-xs font-semibold uppercase tracking-wider text-slate-400">Mutations</div>
                 <TraitChips traits={ordered[0].traits} className="justify-center" />
               </motion.div>
             )}
-            {done && (
-              <motion.div className="mt-6 flex justify-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-                <Button
-                  size="lg"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onClose();
-                  }}
-                >
-                  Continue
-                </Button>
-              </motion.div>
-            )}
+            <motion.div className="mt-6 flex justify-center" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
+              <Button
+                size="lg"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose();
+                }}
+              >
+                Continue
+              </Button>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

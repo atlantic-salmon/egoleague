@@ -18,6 +18,7 @@ const CHAPTER_ART: Record<number, { portrait: string; tint: string }> = {
   2: { portrait: "rin", tint: "from-emerald-700/40" },
   3: { portrait: "sae", tint: "from-slate-500/40" },
   4: { portrait: "kaiser", tint: "from-amber-600/40" },
+  5: { portrait: "isagi", tint: "from-cyan-700/40" },
 };
 
 function StoryMap() {
@@ -38,7 +39,7 @@ function StoryMap() {
         {CHAPTERS.map((ch) => {
           const stages = STAGES.filter((s) => s.chapter === ch.n);
           const open = stages.some((s) => byId.get(s.id)?.unlocked);
-          const art = CHAPTER_ART[ch.n];
+          const art = CHAPTER_ART[ch.n] ?? { portrait: "isagi", tint: "from-blue-700/40" };
           return (
             <section key={ch.n} className={cn("relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br to-slate-950 p-5 sm:p-6", art.tint, !open && "opacity-60")}>
               <Portrait id={art.portrait} expr="ego" className="pointer-events-none absolute -right-6 -top-4 h-48 w-48 opacity-25 sm:h-64 sm:w-64" />

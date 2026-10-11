@@ -129,7 +129,7 @@ function LeagueMatch({ teamId }: { teamId: string }) {
             : won
               ? status && status.wins === 0
                 ? "First win! Next tier unlocked if this was your frontier."
-                : "Win counted. Replay anytime for smaller gem rewards."
+                : "Win counted. Replay anytime for half the first-clear rewards."
               : "Defeat. Adjust your lineup and try again."
         }
         actions={
@@ -207,7 +207,7 @@ function LeagueMatch({ teamId }: { teamId: string }) {
         </div>
         <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-900/70 p-4">
           <div className="text-sm text-slate-300">
-            First win: <span className="text-cyan-200">{foe.rewards.gems} gems</span> · Replay: smaller gem payout
+            First win: <span className="text-cyan-200">{foe.rewards.gems} gems</span> · Replay: half first-clear gems and XP
           </div>
           <button
             type="button"
