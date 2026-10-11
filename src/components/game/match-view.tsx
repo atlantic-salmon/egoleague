@@ -24,6 +24,9 @@ interface CdHud {
   abilityMax: number;
   abilityKey: string;
   shootKey: string;
+  stamina: number;
+  staminaMax: number;
+  overhold: number;
 }
 
 const EMPTY_CD: CdHud = {
@@ -35,6 +38,9 @@ const EMPTY_CD: CdHud = {
   abilityMax: 18 * TICK_RATE,
   abilityKey: "Q",
   shootKey: "Space",
+  stamina: 100,
+  staminaMax: 100,
+  overhold: 0,
 };
 
 function cdsFromState(s: MatchState, cfg: MatchConfig, humanSlot: number, scheme: Scheme): CdHud {
@@ -53,6 +59,9 @@ function cdsFromState(s: MatchState, cfg: MatchConfig, humanSlot: number, scheme
     abilityMax,
     abilityKey: help.ability,
     shootKey: scheme === "p2" ? "Enter" : "Space",
+    stamina: p?.stamina ?? pl?.stats.staminaMax ?? 100,
+    staminaMax: pl?.stats.staminaMax ?? 100,
+    overhold: p?.overhold ?? 0,
   };
 }
 
@@ -82,9 +91,23 @@ function CdRow({ label, keyHint, left, max, readyColor }: { label: string; keyHi
 }
 
 function CooldownPanel({ cds }: { cds: CdHud }) {
+  const stamPct = Math.max(0, Math.min(100, (cds.stamina / Math.max(1, cds.staminaMax)) * 100));
+  const stamColor = stamPct > 35 ? "#4ade80" : stamPct > 15 ? "#fbbf24" : "#f43f5e";
   return (
     <div className="pointer-events-none absolute bottom-3 left-3 z-20 w-[11.5rem] rounded-xl border border-white/15 bg-slate-950/45 px-2.5 py-2 shadow-lg backdrop-blur-md sm:bottom-4 sm:left-4 sm:w-52">
       <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-300/90">Cooldowns</div>
+      <div className="mb-2">
+        <div className="mb-0.5 flex items-baseline justify-between text-[10px] uppercase tracking-wider">
+          <span className="text-white">Stamina</span>
+          <span className="font-mono tabular-nums text-slate-300">{Math.round(stamPct)}%</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-black/40">
+          <div className="h-full rounded-full transition-[width] duration-100" style={{ width: `${stamPct}%`, background: stamColor }} />
+        </div>
+        {cds.overhold > 0 && (
+          <div className="mt-1 text-[10px] font-semibold uppercase tracking-wide text-rose-300">Release shot — overcharging!</div>
+        )}
+      </div>
       <div className="space-y-1.5">
         <CdRow label="Shoot" keyHint={cds.shootKey} left={cds.kick} max={cds.kickMax} readyColor="#38bdf8" />
         <CdRow label="Tackle" keyHint="Hold" left={cds.tackle} max={cds.tackleMax} readyColor="#fbbf24" />
@@ -96,7 +119,7 @@ function CooldownPanel({ cds }: { cds: CdHud }) {
 
 interface Banner {
   id: number;
-  kind: "goal" | "save" | "kickoff" | "end" | "tackle";
+  kind: "goal" | "save" | "kickoff" | "end" | "tackle" | "fumble";
   text: string;
   sub?: string;
   color: string;
@@ -301,6 +324,9 @@ function useBanners(cfg: MatchConfig) {
           push({ kind: "save", text: "Blue Lock Man", sub: e.catch ? "CATCHES IT" : "PARRIES", color: "#0e7490" }, 1200);
         } else if (e.t === "tackle") {
           say(e.p, "Out of my way!");
+        } else if (e.t === "fumble") {
+          push({ kind: "fumble", text: "FUMBLE", sub: "Held the shot too long", color: "#e11d48" }, 1400);
+          say(e.p, "I held it too long...");
         } else if (e.t === "ability") {
           const pl = cfg.players[e.p];
           if (!pl) continue;

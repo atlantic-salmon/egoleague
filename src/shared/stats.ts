@@ -130,6 +130,7 @@ export function toPhysics(r: Ratings, t: Tuning = DEFAULT_TUNING): PhysStats {
     tackle: round(clamp(r.tackle / 110, 0.2, 0.99)),
     chargeRate: round(p.chargeBase + r.shot * p.chargePerPoint),
     mass: round(0.8 + clamp(r.physical, 0, 130) / 130),
+    staminaMax: round(78 + clamp(r.physical, 0, 140) * 0.55),
   };
 }
 

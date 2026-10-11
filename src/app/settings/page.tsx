@@ -102,6 +102,8 @@ export default function SettingsPage() {
           <li>Turning sharply bleeds momentum. Agile players keep more speed through turns.</li>
           <li>Hold shoot to charge a stronger shot. Pressing shoot without the ball is a sliding tackle.</li>
           <li>Press the Ability key (Q / U) to fire your character&apos;s special technique — a short cutscene plays, then the effect kicks in.</li>
+          <li>Hold shoot to charge, but release before the red overcharge ring fills or you fumble the ball and get stunned.</li>
+          <li>Stamina drains when you sprint, charge shots, tackle, or use abilities. Low stamina slows you down — jog to recover.</li>
           <li>Esc or P pauses local matches.</li>
         </ul>
         <div className="mt-3 flex flex-wrap gap-3 text-sm text-slate-400">

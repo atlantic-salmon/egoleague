@@ -299,7 +299,13 @@ function Gacha() {
             ) : (
               (banner.featured.length ? banner.featured : ["isagi.base", "rin.base", "nagi.base"]).slice(0, 3).map((v, i) => (
                 <div key={v} className="absolute" style={{ left: i * 70, top: i === 1 ? 0 : 50, zIndex: 3 - i }}>
-                  <Portrait id={VARIANT_BY_ID[v].characterId} expr="ego" className="h-52 w-52 drop-shadow-[0_0_30px_rgba(0,0,0,0.8)]" flip={i === 1} />
+                  <Portrait
+                    id={VARIANT_BY_ID[v].characterId}
+                    variantId={v}
+                    expr="ego"
+                    className="h-52 w-52 drop-shadow-[0_0_30px_rgba(0,0,0,0.8)]"
+                    flip={i === 1}
+                  />
                 </div>
               ))
             )}

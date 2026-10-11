@@ -282,11 +282,31 @@ function drawPlayer(
     ctx.shadowBlur = 0;
   }
   if (p.charge >= 0) {
-    ctx.strokeStyle = p.charge > 0.95 ? "#f43f5e" : "#38bdf8";
-    ctx.lineWidth = 4;
+    const over = p.overhold > 0;
+    ctx.strokeStyle = over ? "#fb7185" : p.charge > 0.95 ? "#f43f5e" : "#38bdf8";
+    ctx.lineWidth = over ? 5 : 4;
     ctx.beginPath();
-    ctx.arc(0, 0, PR + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * p.charge);
+    ctx.arc(0, 0, PR + 11, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * Math.min(1, p.charge));
     ctx.stroke();
+    if (over) {
+      // Outer danger ring fills as overhold approaches the fumble limit.
+      const frac = Math.min(1, p.overhold / 51);
+      ctx.strokeStyle = `rgba(248,113,113,${0.35 + frac * 0.55})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, PR + 16, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * frac);
+      ctx.stroke();
+    }
+  }
+  if (isYou) {
+    const max = Math.max(1, cfg.players[i].stats.staminaMax);
+    const ratio = Math.max(0, Math.min(1, p.stamina / max));
+    ctx.fillStyle = "rgba(2,6,23,0.55)";
+    roundRect(ctx, -18, PR + 8, 36, 5, 2);
+    ctx.fill();
+    ctx.fillStyle = ratio > 0.35 ? "#4ade80" : ratio > 0.15 ? "#fbbf24" : "#f43f5e";
+    roundRect(ctx, -18, PR + 8, 36 * ratio, 5, 2);
+    ctx.fill();
   }
   if (p.stun > 0) {
     const t = performance.now() / 120;

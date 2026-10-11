@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Lock, Footprints, Crown, Shirt, Sparkle } from "lucide-react";
 import { RARITY_INFO, isMythicPlus, type Rarity } from "@/shared/rarity";
+// isMythicPlus used for high-tier card chrome + unique variant portraits
 import { Portrait } from "./portrait";
 import { TraitChips } from "./trait-chips";
 import type { Item } from "@/lib/types";
@@ -138,7 +139,12 @@ export function ItemCard({
         }}
       >
         {item.kind === "char" ? (
-          <Portrait id={item.characterId} expr={high ? "ego" : "normal"} className={cn("h-full", compact ? "w-24" : "w-32")} />
+          <Portrait
+            id={item.characterId}
+            variantId={isMythicPlus(item.rarity) ? item.templateId : undefined}
+            expr={high ? "ego" : "normal"}
+            className={cn("h-full", compact ? "w-24" : "w-32")}
+          />
         ) : (
           <div className="flex h-full items-center justify-center">
             <GearArt templateId={item.templateId} slot={item.slot} rarity={item.rarity} className={cn(compact ? "h-16 w-16" : "h-24 w-24")} />

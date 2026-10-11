@@ -20,9 +20,9 @@ const GUEST_ROSTER = VARIANTS.filter((v) => v.rarity === "C" || v.rarity === "UC
 type Mode = "versus" | "coop";
 
 const DIFFS = [
-  { id: 0.3, label: "Rookie" },
-  { id: 0.55, label: "Selection" },
-  { id: 0.75, label: "U-20" },
+  { id: 0.52, label: "Rookie" },
+  { id: 0.72, label: "Selection" },
+  { id: 0.9, label: "U-20" },
 ];
 
 function Picker({ label, value, onChange, color }: { label: string; value: string; onChange: (v: string) => void; color: string }) {
@@ -57,7 +57,7 @@ export default function LocalPage() {
   const [p1, setP1] = useState("isagi.base");
   const [p2, setP2] = useState("bachira.base");
   const [teamSize, setTeamSize] = useState(3);
-  const [diff, setDiff] = useState(0.55);
+  const [diff, setDiff] = useState(0.72);
   const [duration, setDuration] = useState(120);
   const [phase, setPhase] = useState<"setup" | "play" | "done">("setup");
   const [config, setConfig] = useState<MatchConfig | null>(null);

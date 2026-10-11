@@ -81,7 +81,10 @@ export function homePos(cfg: MatchConfig, i: number): [number, number] {
   return [x, f[1] * H];
 }
 
-function newPlayer(): PState {
+/** Ticks held at full charge before the ball is fumbled. ~0.85s. */
+export const OVERHOLD_LIMIT = 51;
+
+function newPlayer(staminaMax = 100): PState {
   return {
     x: 0,
     y: 0,
@@ -91,10 +94,12 @@ function newPlayer(): PState {
     hy: 0,
     speed: 0,
     charge: -1,
+    overhold: 0,
     kickCd: 0,
     tackleCd: 0,
     tackleT: 0,
     stun: 0,
+    stamina: staminaMax,
     aiT: 0,
     aiMode: 0,
     prevShoot: false,
@@ -103,6 +108,35 @@ function newPlayer(): PState {
     abilityT: 0,
     abilityCd: 0,
   };
+}
+
+function staminaFactor(p: PState, max: number) {
+  const ratio = max > 0 ? p.stamina / max : 1;
+  if (ratio >= 0.35) return 0.72 + 0.28 * Math.min(1, ratio / 0.85);
+  return 0.42 + 0.3 * (ratio / 0.35);
+}
+
+function spendStamina(p: PState, amount: number) {
+  p.stamina = Math.max(0, p.stamina - amount);
+}
+
+function fumbleBall(s: MatchState, cfg: MatchConfig, i: number) {
+  const p = s.players[i];
+  const b = s.ball;
+  if (b.owner !== i) return;
+  b.owner = -1;
+  b.vx = p.hx * 90 + (rnd(s) - 0.5) * 160;
+  b.vy = p.hy * 90 + (rnd(s) - 0.5) * 160;
+  b.lastTouch = i;
+  b.lastSide = cfg.players[i].side;
+  b.shotId++;
+  p.charge = -1;
+  p.overhold = 0;
+  p.stun = Math.max(p.stun, 54);
+  p.speed *= 0.25;
+  spendStamina(p, 18);
+  s.events.push({ t: "fumble", p: i });
+  s.events.push({ t: "kick", x: b.x, y: b.y });
 }
 
 function skillOf(cfg: MatchConfig, i: number) {
@@ -116,11 +150,12 @@ function activeEffect(s: MatchState, cfg: MatchConfig, i: number): AbilityEffect
 
 function activateAbility(s: MatchState, cfg: MatchConfig, i: number) {
   const p = s.players[i];
-  if (p.abilityCd > 0 || p.stun > 0 || s.phase !== 0) return;
+  if (p.abilityCd > 0 || p.stun > 0 || s.phase !== 0 || p.stamina < 14) return;
   const skill = skillOf(cfg, i);
   const ab = skill.ability;
   p.abilityT = Math.max(1, Math.floor(ab.durationSec * TICK_RATE));
   p.abilityCd = Math.max(p.abilityT, Math.floor(ab.cooldownSec * TICK_RATE));
+  spendStamina(p, 22);
   s.events.push({ t: "ability", p: i, skillId: skill.id });
 
   const effect = ab.effect;
@@ -177,7 +212,7 @@ export function createMatch(cfg: MatchConfig): MatchState {
     phase: 0,
     phaseT: 0,
     score: [0, 0],
-    players: cfg.players.map(() => newPlayer()),
+    players: cfg.players.map((pl) => newPlayer(pl.stats.staminaMax)),
     goalies: [newGoalie(0), newGoalie(1)],
     ball,
     rng: cfg.seed | 0,
@@ -200,7 +235,9 @@ function kickoff(s: MatchState, cfg: MatchConfig, kickSide: number) {
     p.hx = cfg.players[i].side === 0 ? 1 : -1;
     p.hy = 0;
     p.charge = -1;
+    p.overhold = 0;
     p.stun = p.kickCd = p.tackleCd = p.tackleT = 0;
+    p.stamina = Math.min(cfg.players[i].stats.staminaMax, p.stamina + cfg.players[i].stats.staminaMax * 0.22);
   }
   s.goalies = [newGoalie(0), newGoalie(1)];
   const b = s.ball;
@@ -331,8 +368,9 @@ function pass(s: MatchState, cfg: MatchConfig, i: number, isHuman: boolean) {
 
 function startTackle(s: MatchState, cfg: MatchConfig, i: number) {
   const p = s.players[i];
-  if (p.tackleCd > 0 || p.stun > 0) return;
+  if (p.tackleCd > 0 || p.stun > 0 || p.stamina < 8) return;
   const st = cfg.players[i].stats;
+  spendStamina(p, 12);
   p.speed = Math.min(p.speed + 110 * cfg.tempo, st.topSpeed * cfg.tempo * 1.4);
   p.tackleT = 12;
   p.tackleCd = 60;
@@ -374,6 +412,9 @@ function move(s: MatchState, cfg: MatchConfig, i: number, dx: number, dy: number
       }
     }
   }
+  const stam = staminaFactor(p, st.staminaMax);
+  speedMul *= stam;
+  accelMul *= 0.55 + 0.45 * stam;
   const mag = Math.min(1, len(dx, dy));
   const carrying = s.ball.owner === i;
   if (mag > 0.05) {
@@ -395,10 +436,13 @@ function move(s: MatchState, cfg: MatchConfig, i: number, dx: number, dy: number
     const cap = st.topSpeed * cfg.tempo * mag * (carrying ? 0.92 : 1) * speedMul;
     if (p.speed < cap) p.speed = Math.min(cap, p.speed + st.accel * cfg.tempo * accelMul * DT);
     else p.speed = Math.max(cap, p.speed - 600 * DT);
+    // Sprint cost scales with effort.
+    const effort = p.speed / Math.max(1, st.topSpeed * cfg.tempo);
+    if (effort > 0.55) spendStamina(p, (4.2 + effort * 7.5) * DT);
   } else {
     p.speed = Math.max(0, p.speed - 520 * DT);
   }
-  if (p.tackleT > 0) p.speed = Math.max(p.speed, st.topSpeed * cfg.tempo * 0.9);
+  if (p.tackleT > 0) p.speed = Math.max(p.speed, st.topSpeed * cfg.tempo * 0.9 * stam);
   p.vx = p.hx * p.speed;
   p.vy = p.hy * p.speed;
 }
@@ -442,12 +486,12 @@ function botThink(s: MatchState, cfg: MatchConfig, i: number): [number, number] 
       my += (ay / al) * 0.9;
     }
     if (decide) {
-      if (dg < 260 + 160 * skill && rnd(s) < 0.35 + 0.4 * skill) {
-        const ty = H / 2 + (rnd(s) - 0.5) * GOAL_W * 0.75;
-        shoot(s, cfg, i, clamp(dg / 520, 0.45, 1), oppGoalX, ty);
-      } else if (od < 60 && rnd(s) < 0.25 + 0.5 * skill) {
+      if (dg < 280 + 180 * skill && rnd(s) < 0.42 + 0.45 * skill) {
+        const ty = H / 2 + (rnd(s) - 0.5) * GOAL_W * 0.7;
+        shoot(s, cfg, i, clamp(dg / 480, 0.55, 1), oppGoalX, ty);
+      } else if (od < 70 && rnd(s) < 0.32 + 0.55 * skill) {
         pass(s, cfg, i, false);
-      } else if (dg > 520 && rnd(s) < 0.1) {
+      } else if (dg > 480 && rnd(s) < 0.14 + 0.1 * skill) {
         pass(s, cfg, i, false);
       }
     }
@@ -480,7 +524,7 @@ function botThink(s: MatchState, cfg: MatchConfig, i: number): [number, number] 
     if (rank === 0) {
       tx = b.x + b.vx * 0.25;
       ty = b.y + b.vy * 0.25;
-      if (decide && b.owner >= 0 && b.owner < 100 && ownerSide !== side && myD < 46 && rnd(s) < 0.25 + 0.5 * skill) {
+      if (decide && b.owner >= 0 && b.owner < 100 && ownerSide !== side && myD < 52 && rnd(s) < 0.34 + 0.55 * skill) {
         startTackle(s, cfg, i);
       }
     } else if (rank === 1) {
@@ -593,7 +637,7 @@ function goalieUpdate(s: MatchState, cfg: MatchConfig, side: 0 | 1) {
       } else if (checked !== b.shotId) {
         if (side === 0) b.checked0 = b.shotId;
         else b.checked1 = b.shotId;
-        const chance = clamp(0.3 + 0.62 * skill - Math.max(0, bs - 280) / 1500, 0.05, 0.95);
+        const chance = clamp(0.42 + 0.58 * skill - Math.max(0, bs - 300) / 1700, 0.14, 0.97);
         if (rnd(s) < chance) {
           s.saves[side]++;
           if (bs < 480) {
@@ -613,7 +657,7 @@ function goalieUpdate(s: MatchState, cfg: MatchConfig, side: 0 | 1) {
       }
     }
   } else if (b.owner >= 0 && b.owner < 100 && cfg.players[b.owner].side !== side && bd < GR + BR + 4) {
-    if (rnd(s) < 0.05 * (0.5 + skill)) {
+    if (rnd(s) < 0.08 * (0.55 + skill)) {
       s.players[b.owner].kickCd = 30;
       b.owner = 100 + side;
       g.hold = 40;
@@ -865,15 +909,31 @@ export function step(s: MatchState, cfg: MatchConfig, inputs: ArrayLike<number>)
       if (abilityHeld && !p.prevAbility) activateAbility(s, cfg, i);
       if (s.ball.owner === i) {
         const chargeMul = activeEffect(s, cfg, i) === "shot" ? 3 : 1;
+        const stamCharge = 0.55 + 0.45 * staminaFactor(p, def.stats.staminaMax);
         if (shootHeld) {
-          p.charge = p.charge < 0 ? 0 : Math.min(1, p.charge + def.stats.chargeRate * chargeMul * DT);
-        } else if (p.prevShoot && p.charge >= 0) {
+          if (p.charge < 0) p.charge = 0;
+          if (p.charge < 1) {
+            p.charge = Math.min(1, p.charge + def.stats.chargeRate * chargeMul * stamCharge * DT);
+            p.overhold = 0;
+            spendStamina(p, 9 * DT);
+          } else {
+            p.charge = 1;
+            p.overhold++;
+            spendStamina(p, 14 * DT);
+            if (p.overhold >= OVERHOLD_LIMIT) fumbleBall(s, cfg, i);
+          }
+        } else if (p.prevShoot && p.charge >= 0 && s.ball.owner === i) {
           shoot(s, cfg, i, p.charge);
           p.charge = -1;
+          p.overhold = 0;
+          spendStamina(p, 6);
+        } else {
+          p.overhold = 0;
         }
         if (passHeld && !p.prevPass && s.ball.owner === i) pass(s, cfg, i, true);
       } else {
         p.charge = -1;
+        p.overhold = 0;
         if (shootHeld && !p.prevShoot) startTackle(s, cfg, i);
       }
       p.prevShoot = shootHeld;
@@ -882,7 +942,7 @@ export function step(s: MatchState, cfg: MatchConfig, inputs: ArrayLike<number>)
     } else {
       [dx, dy] = botThink(s, cfg, i);
       // Bots fire abilities near the box or when contesting the ball.
-      if (p.abilityCd === 0 && rnd(s) < 0.012) {
+      if (p.abilityCd === 0 && rnd(s) < 0.018) {
         const goalX = def.side === 0 ? W : 0;
         const nearGoal = Math.abs(p.x - goalX) < 320;
         const hasBall = s.ball.owner === i;
@@ -893,6 +953,14 @@ export function step(s: MatchState, cfg: MatchConfig, inputs: ArrayLike<number>)
       }
     }
     move(s, cfg, i, dx, dy);
+    // Recover stamina when jogging / idle and not charging.
+    if (p.stun <= 0 && p.charge < 0) {
+      const effort = p.speed / Math.max(1, def.stats.topSpeed * cfg.tempo);
+      if (effort < 0.4) {
+        const recover = (effort < 0.12 ? 16 : 9) * DT * (0.75 + 0.35 * (def.stats.mass / 1.2));
+        p.stamina = Math.min(def.stats.staminaMax, p.stamina + recover);
+      }
+    }
     p.x += p.vx * DT;
     p.y += p.vy * DT;
   }
@@ -958,9 +1026,24 @@ const r1 = (x: number) => Math.round(x * 10) / 10;
 
 export function snapshot(s: MatchState): Snapshot {
   const p: number[] = [];
-  // stride 12: pos/heading/speed/charge/stun/tackleT/abilityT + kick/tackle/ability CDs for HUD
+  // stride 14: prior 12 + stamina + overhold
   for (const q of s.players)
-    p.push(r1(q.x), r1(q.y), r1(q.hx * 100) / 100, r1(q.hy * 100) / 100, r1(q.speed), r1(q.charge), q.stun, q.tackleT, q.abilityT, q.kickCd, q.tackleCd, q.abilityCd);
+    p.push(
+      r1(q.x),
+      r1(q.y),
+      r1(q.hx * 100) / 100,
+      r1(q.hy * 100) / 100,
+      r1(q.speed),
+      r1(q.charge),
+      q.stun,
+      q.tackleT,
+      q.abilityT,
+      q.kickCd,
+      q.tackleCd,
+      q.abilityCd,
+      r1(q.stamina),
+      q.overhold,
+    );
   const g: number[] = [];
   for (const q of s.goalies) g.push(r1(q.x), r1(q.y), q.hold, r1(q.dive));
   const b = s.ball;
@@ -977,7 +1060,7 @@ export function stateFromSnapshot(base: MatchState, a: Snapshot, bSnap: Snapshot
   s.phaseT = a.pt;
   s.score = [a.sc[0], a.sc[1]];
   const per = s.players.length > 0 ? Math.floor(a.p.length / s.players.length) : 8;
-  const stride = per >= 12 ? 12 : per >= 9 ? 9 : 8;
+  const stride = per >= 14 ? 14 : per >= 12 ? 12 : per >= 9 ? 9 : 8;
   for (let i = 0; i < s.players.length; i++) {
     const o = i * stride;
     const q = s.players[i];
@@ -994,6 +1077,8 @@ export function stateFromSnapshot(base: MatchState, a: Snapshot, bSnap: Snapshot
     q.kickCd = stride >= 12 ? a.p[o + 9] : 0;
     q.tackleCd = stride >= 12 ? a.p[o + 10] : 0;
     q.abilityCd = stride >= 12 ? a.p[o + 11] : 0;
+    q.stamina = stride >= 14 ? a.p[o + 12] : q.stamina;
+    q.overhold = stride >= 14 ? a.p[o + 13] : 0;
     q.vx = q.hx * q.speed;
     q.vy = q.hy * q.speed;
   }

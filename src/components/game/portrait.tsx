@@ -13,7 +13,6 @@ function SvgBust({ id, expr, className, flip }: { id: string; expr: Expr; classN
   const hs = ch.hairStyle;
   return (
     <svg viewBox="0 0 200 220" className={className} style={flip ? { transform: "scaleX(-1)" } : undefined} aria-label={ch.name} role="img">
-      {/* No solid backdrop — transparent cutout bust */}
       <path d="M85 150 L100 175 L115 150 Z" fill="#e2e8f0" />
       <rect x="86" y="120" width="28" height="36" rx="10" fill={ch.skin} />
       <path d="M58 82 C58 40 142 40 142 82 L140 112 C136 140 118 156 100 156 C82 156 64 140 60 112 Z" fill={ch.skin} />
@@ -72,30 +71,50 @@ function SvgBust({ id, expr, className, flip }: { id: string; expr: Expr; classN
   );
 }
 
-/** Character bust: prefers transparent PNG cutouts, then JPG, then vector. */
-export function Portrait({ id, expr = "normal", className, flip }: { id: string; expr?: Expr; className?: string; flip?: boolean }) {
-  const [failedFor, setFailedFor] = useState<string | null>(null);
-  const [useJpg, setUseJpg] = useState(false);
+/**
+ * Character bust. Prefers Mythic+ variant art at /portraits/variants/{variantId}.png,
+ * then character PNG/JPG cutouts, then vector.
+ */
+export function Portrait({
+  id,
+  variantId,
+  expr = "normal",
+  className,
+  flip,
+}: {
+  id: string;
+  /** When set (Mythic+), try unique variant art first. */
+  variantId?: string;
+  expr?: Expr;
+  className?: string;
+  flip?: boolean;
+}) {
+  const [stage, setStage] = useState<"variant" | "png" | "jpg" | "svg">(variantId ? "variant" : "png");
   const ch = CHARACTER_BY_ID[id];
+  const variantSrc = variantId ? `/portraits/variants/${variantId}.png` : null;
   const png = `/portraits/${id}.png`;
   const jpg = `/portraits/${id}.jpg`;
-  const failed = failedFor === id;
-  if (!failed && ch) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img
-        key={`${id}-${useJpg ? "jpg" : "png"}`}
-        src={useJpg ? jpg : png}
-        alt={ch.name}
-        className={cn("object-contain object-bottom", className)}
-        style={flip ? { transform: "scaleX(-1)" } : undefined}
-        onError={() => {
-          if (!useJpg) setUseJpg(true);
-          else setFailedFor(id);
-        }}
-        draggable={false}
-      />
-    );
+
+  if (!ch || stage === "svg") {
+    return <SvgBust id={id} expr={expr} className={className} flip={flip} />;
   }
-  return <SvgBust id={id} expr={expr} className={className} flip={flip} />;
+
+  const src = stage === "variant" && variantSrc ? variantSrc : stage === "jpg" ? jpg : png;
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={`${id}-${variantId ?? ""}-${stage}`}
+      src={src}
+      alt={ch.name}
+      className={cn("object-contain object-bottom", className)}
+      style={flip ? { transform: "scaleX(-1)" } : undefined}
+      onError={() => {
+        if (stage === "variant") setStage("png");
+        else if (stage === "png") setStage("jpg");
+        else setStage("svg");
+      }}
+      draggable={false}
+    />
+  );
 }

@@ -185,8 +185,8 @@ route(
         { name: `${friend.username}'s ${theirs!.team?.name ?? "Team"} (Ghost)`, color: "#b91c1c", accent: "#fecaca" },
       ],
       players: [...rosterDefs(mine.entries, 0, true, "m"), ...rosterDefs(theirs!.entries, 1, false, "g")],
-      botSkill: [0.6, 0.72],
-      goalieSkill: [0.55, 0.6],
+      botSkill: [0.68, 0.82],
+      goalieSkill: [0.64, 0.74],
       humanCount: 1,
       formations: [mine.formation, theirs!.formation],
     };

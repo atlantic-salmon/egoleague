@@ -54,10 +54,10 @@ const lobbies = new Map<string, Lobby>();
 const queue: { userId: number; teamId: number | null }[] = [];
 
 const DIFF: Record<Difficulty, { rarities: Rarity[]; level: number; roll: number; skill: number; goalie: number }> = {
-  easy: { rarities: ["C", "UC"], level: 3, roll: 30, skill: 0.35, goalie: 0.3 },
-  normal: { rarities: ["R", "E"], level: 12, roll: 50, skill: 0.55, goalie: 0.5 },
-  hard: { rarities: ["E", "M", "L"], level: 25, roll: 65, skill: 0.75, goalie: 0.68 },
-  ego: { rarities: ["L", "WC", "N1"], level: 45, roll: 85, skill: 0.92, goalie: 0.88 },
+  easy: { rarities: ["C", "UC"], level: 4, roll: 35, skill: 0.52, goalie: 0.5 },
+  normal: { rarities: ["R", "E"], level: 14, roll: 55, skill: 0.7, goalie: 0.66 },
+  hard: { rarities: ["E", "L", "M"], level: 28, roll: 70, skill: 0.84, goalie: 0.8 },
+  ego: { rarities: ["M", "WC", "N1"], level: 48, roll: 88, skill: 0.96, goalie: 0.94 },
 };
 
 export function onlineUsers() {
@@ -406,8 +406,8 @@ function tryMatchmake() {
           { name: rb.team?.name ?? cb.user.username, color: "#dc2626", accent: "#fee2e2" },
         ],
         players,
-        botSkill: [0.62, 0.62],
-        goalieSkill: [0.58, 0.58],
+        botSkill: [0.74, 0.74],
+        goalieSkill: [0.7, 0.7],
         humanCount: 2,
         formations: [ra.formation, rb.formation],
       };

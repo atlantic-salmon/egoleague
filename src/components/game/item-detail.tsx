@@ -13,7 +13,7 @@ import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { CharItem, GearItem, Item, Profile } from "@/lib/types";
 import { STAT_KEYS, STAT_LABEL, GEAR_BY_ID, GEAR_SLOT_STATS, type GearSlot } from "@/shared/catalog";
-import { RARITY_INFO } from "@/shared/rarity";
+import { RARITY_INFO, isMythicPlus } from "@/shared/rarity";
 import { cn } from "@/lib/utils";
 
 const SLOTS: { slot: GearSlot; label: string }[] = [
@@ -141,7 +141,12 @@ export function ItemDetail({
             style={{ borderColor: r.color, background: `radial-gradient(circle at 50% 30%, ${r.glow}, transparent 70%), #020617` }}
           >
             {item.kind === "char" ? (
-              <Portrait id={item.characterId} expr="ego" className="h-full w-full" />
+              <Portrait
+                id={item.characterId}
+                variantId={isMythicPlus(item.rarity) ? item.templateId : undefined}
+                expr="ego"
+                className="h-full w-full"
+              />
             ) : (
               <GearArt templateId={item.templateId} slot={item.slot} rarity={item.rarity} className="mb-4 h-28 w-28" />
             )}

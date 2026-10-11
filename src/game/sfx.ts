@@ -66,8 +66,11 @@ export function playEvents(events: MatchEvent[]) {
     } else if (e.t === "save") {
       tone(70, 0.2, "sine", 0.4, 40);
       noise(0.1, 0.2, 400);
-    }     else if (e.t === "tackle") noise(0.12, 0.3, 300);
-    else if (e.t === "ability") {
+    } else if (e.t === "tackle") noise(0.12, 0.3, 300);
+    else if (e.t === "fumble") {
+      noise(0.2, 0.35, 500);
+      tone(120, 0.25, "sawtooth", 0.15, 80);
+    } else if (e.t === "ability") {
       tone(220, 0.18, "sawtooth", 0.12, 900);
       tone(660, 0.35, "square", 0.1, 400);
       setTimeout(() => tone(990, 0.45, "square", 0.08, 600), 80);

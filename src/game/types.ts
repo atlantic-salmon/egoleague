@@ -9,6 +9,8 @@ export interface PhysStats {
   tackle: number;
   chargeRate: number;
   mass: number;
+  /** Max stamina pool (engine units). */
+  staminaMax: number;
 }
 
 export interface MatchPlayerDef {
@@ -53,10 +55,14 @@ export interface PState {
   hy: number;
   speed: number;
   charge: number;
+  /** Ticks held at full charge; too long → fumble. */
+  overhold: number;
   kickCd: number;
   tackleCd: number;
   tackleT: number;
   stun: number;
+  /** Current stamina 0..staminaMax. */
+  stamina: number;
   aiT: number;
   aiMode: number;
   prevShoot: boolean;
@@ -101,6 +107,7 @@ export type MatchEvent =
   | { t: "kick"; x: number; y: number }
   | { t: "post"; x: number; y: number }
   | { t: "ability"; p: number; skillId: string }
+  | { t: "fumble"; p: number }
   | { t: "kickoff" }
   | { t: "end" };
 
