@@ -40,7 +40,14 @@ function rollRarity(minIdx: number): Rarity {
 function pickTemplate(bannerId: string, rarity: Rarity) {
   const b = BANNER_BY_ID[bannerId];
   if (b.kind === "gear") {
-    const opts = GEAR.filter((g) => g.rarity === rarity);
+    let opts = GEAR.filter((g) => g.rarity === rarity);
+    if (!opts.length) {
+      // Fall back to nearest lower rarity so empty pools never crash a pull.
+      for (let i = rarityIndex(rarity) - 1; i >= 0 && !opts.length; i--) {
+        opts = GEAR.filter((g) => g.rarity === RARITIES[i]);
+      }
+    }
+    if (!opts.length) fail(500, "Gear pool is empty");
     return opts[crypto.randomInt(0, opts.length)].id;
   }
   const featured = VARIANTS.filter((v) => v.rarity === rarity && b.featured.includes(v.id));
@@ -51,6 +58,12 @@ function pickTemplate(bannerId: string, rarity: Rarity) {
     const unique = opts.filter((v) => v.label !== "Base");
     if (unique.length) opts = unique;
   }
+  if (!opts.length) {
+    for (let i = rarityIndex(rarity) - 1; i >= 0 && !opts.length; i--) {
+      opts = VARIANTS.filter((v) => v.rarity === RARITIES[i]);
+    }
+  }
+  if (!opts.length) fail(500, "Character pool is empty");
   return opts[crypto.randomInt(0, opts.length)].id;
 }
 

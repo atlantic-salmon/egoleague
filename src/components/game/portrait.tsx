@@ -72,7 +72,7 @@ function SvgBust({ id, expr, className, flip }: { id: string; expr: Expr; classN
 }
 
 /**
- * Character bust. Prefers Mythic+ variant art at /portraits/variants/{variantId}.png,
+ * Character bust. Prefers Legendary+ variant art at /portraits/variants/{variantId}.png,
  * then character PNG/JPG cutouts, then vector.
  */
 export function Portrait({
@@ -83,7 +83,7 @@ export function Portrait({
   flip,
 }: {
   id: string;
-  /** When set (Mythic+), try unique variant art first. */
+  /** When set (Legendary+), try unique variant art first. */
   variantId?: string;
   expr?: Expr;
   className?: string;

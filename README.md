@@ -4,8 +4,8 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
 
 ## Features
 
-- **Isagi's Path (story mode):** 8 stages across 4 chapters with fixed preset lineups (your collection is not used here). Each stage has an objective, star ratings, first-clear gem rewards, and animated cutscenes.
-- **League:** climb an escalating ladder of AI teams with your own collection lineup. Beat a side to unlock the next; any unlocked team can be replayed for smaller gem rewards.
+- **Isagi's Path (story mode):** 14 stages across 5 chapters with fixed preset lineups (your collection is not used here). Each stage has an objective, star ratings, first-clear gem rewards, and animated cutscenes.
+- **League:** climb an escalating ladder of AI teams with your own collection lineup. Beat a side to unlock the next; replaying a cleared team pays half of that team's first-clear gems and XP.
 - **Abilities:** every skill has an activatable technique (Q / U / gamepad Y). The ability banner slides in from the left, holds, then exits off the right. Players also talk during matches with short banter bubbles.
 - **Camera:** the pitch is larger than the viewport. The camera follows you and zooms around the play.
 - **Character portraits:** transparent PNG cutouts under `public/portraits/` (JPG fallback, then vector bust). Cutscenes use layered scene backdrops (facility, pitch, stadium, monitor, etc.).
@@ -14,7 +14,7 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
 - **Stamina & overcharge:** sprinting, charging, tackling and abilities drain stamina. Holding a fully charged shot too long fumbles the ball and stuns you.
 - **Blue Lock Man goalkeeper:** a compact AI keeper that tracks the ball, dives, saves or parries shots, rushes out on through balls, and distributes the ball.
 - **Gacha with 8 rarities:** Common (C), Uncommon (UC), Rare (R), Epic (E), Legendary (L), Mythic (M), World Class (WC), #1.
-  - Characters come in several versions, such as Isagi (Base), Isagi (Team Z) and Isagi (Bastard München). Mythic and above are unique named versions with their own portrait art under `public/portraits/variants/`.
+  - Characters come in several versions, such as Isagi (Base), Isagi (Team Z) and Isagi (Bastard München). Legendary and above use unique portrait art under `public/portraits/variants/`. Mythic and above are uniquely named versions.
   - Gear (boots, headband, jersey) uses the same rarities and has simple slot art under `public/gear/`. World Class and #1 gear have unique names, such as *Metavision Lens* and *Crown of the Striker*. World Class uses a rainbow badge/border.
   - Pity: Legendary or better is guaranteed within 70 pulls, and #1 within 500. Every 10-pull includes at least one Rare or better.
 - **Talent / Quality:** characters roll Talent only (scales all player stats). Gear rolls Quality only (scales gear boosts). Rolls are permanent and set grade (S–D) and market value.

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { Lock, Footprints, Crown, Shirt, Sparkle } from "lucide-react";
-import { RARITY_INFO, isMythicPlus, type Rarity } from "@/shared/rarity";
-// isMythicPlus used for high-tier card chrome + unique variant portraits
+import { RARITY_INFO, isLegendaryPlus, type Rarity } from "@/shared/rarity";
+// Legendary+ uses unique variant portraits
 import { Portrait } from "./portrait";
 import { TraitChips } from "./trait-chips";
 import type { Item } from "@/lib/types";
@@ -98,7 +98,7 @@ export function ItemCard({
   footer?: React.ReactNode;
 }) {
   const r = RARITY_INFO[item.rarity];
-  const high = isMythicPlus(item.rarity) || item.rarity === "L" || item.rarity === "WC" || item.rarity === "N1";
+  const high = isLegendaryPlus(item.rarity);
   const rainbow = !!r.rainbow;
   return (
     <div
@@ -141,7 +141,7 @@ export function ItemCard({
         {item.kind === "char" ? (
           <Portrait
             id={item.characterId}
-            variantId={isMythicPlus(item.rarity) ? item.templateId : undefined}
+            variantId={high ? item.templateId : undefined}
             expr={high ? "ego" : "normal"}
             className={cn("h-full", compact ? "w-24" : "w-32")}
           />

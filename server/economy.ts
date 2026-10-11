@@ -129,6 +129,13 @@ function parseTraits(raw: string | null | undefined): string[] {
   }
 }
 
+/** Next item id that cannot collide with append-only item_rolls after sells/dismantles. */
+function nextItemId() {
+  const a = get<{ n: number }>("SELECT COALESCE(MAX(id), 0) AS n FROM items")?.n ?? 0;
+  const b = get<{ n: number }>("SELECT COALESCE(MAX(item_id), 0) AS n FROM item_rolls")?.n ?? 0;
+  return Math.max(a, b) + 1;
+}
+
 /** Creates an item. Characters roll Talent + up to 5 traits; gear rolls Quality only. Must run inside tx(). */
 export function createItem(ownerId: number, kind: "char" | "gear", templateId: string, origin: string) {
   const rarity = (kind === "char" ? VARIANT_BY_ID[templateId]?.rarity : GEAR_BY_ID[templateId]?.rarity) as Rarity;
@@ -140,8 +147,10 @@ export function createItem(ownerId: number, kind: "char" | "gear", templateId: s
     kind === "char" && origin !== "starter"
       ? rollTraits(rarity, (n) => crypto.randomInt(0, n))
       : [];
-  const r = run(
-    "INSERT INTO items(owner_id, kind, template_id, rarity, talent, quality, level, origin, created_at, traits) VALUES (?,?,?,?,?,?,1,?,?,?)",
+  const id = nextItemId();
+  run(
+    "INSERT INTO items(id, owner_id, kind, template_id, rarity, talent, quality, level, origin, created_at, traits) VALUES (?,?,?,?,?,?,?,1,?,?,?)",
+    id,
     ownerId,
     kind,
     templateId,
@@ -152,7 +161,6 @@ export function createItem(ownerId: number, kind: "char" | "gear", templateId: s
     Date.now(),
     JSON.stringify(traits),
   );
-  const id = Number(r.lastInsertRowid);
   applyDelta(ownerId, {}, "item_create", origin, { templateId, rarity, talent, quality, traits }, id);
   return get<ItemRow>("SELECT * FROM items WHERE id = ?", id)!;
 }

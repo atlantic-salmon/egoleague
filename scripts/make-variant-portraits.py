@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Build unique Mythic+ variant portraits from base character cutouts.
+"""Build unique Legendary+ variant portraits from base character cutouts.
 
 Each variant gets a distinct crop, kit-color wash, rarity frame, and emblem
-so Mythic / World Class / #1 cards never reuse the plain base bust.
+so Legendary / Mythic / World Class / #1 cards never reuse the plain base bust.
 """
 from __future__ import annotations
 
@@ -29,7 +29,7 @@ def parse_variants() -> list[tuple[str, str, str, str, str]]:
     text = CATALOG.read_text()
     out = []
     for m in re.finditer(
-        r'v\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"(M|WC|N1)",\s*"[^"]+",\s*"[^"]+",\s*([^)]+)\)',
+        r'v\("([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*"(L|M|WC|N1)",\s*"[^"]+",\s*"[^"]+",\s*([^)]+)\)',
         text,
     ):
         char, key, label, rarity, kit_expr = m.group(1), m.group(2), m.group(3), m.group(4), m.group(5).strip()
@@ -45,6 +45,7 @@ def parse_variants() -> list[tuple[str, str, str, str, str]]:
 
 
 RARITY_TINT = {
+    "L": (251, 191, 36),
     "M": (244, 114, 182),
     "WC": (249, 115, 22),
     "N1": (34, 211, 238),
@@ -78,7 +79,16 @@ def make_variant(variant_id: str, char: str, label: str, rarity: str, kit: str, 
     # Color grade
     im = ImageEnhance.Color(im).enhance(1.05 + (idx % 3) * 0.08)
     im = ImageEnhance.Contrast(im).enhance(1.08 if rarity != "N1" else 1.18)
-    im = tint_overlay(im, kit_rgb, 0.12 + (0.04 if rarity == "M" else 0.08))
+    tint_a = 0.1 if rarity == "L" else 0.12 + (0.04 if rarity == "M" else 0.08)
+    im = tint_overlay(im, kit_rgb, tint_a)
+    if rarity == "L":
+        # Gold corner shards unique to Legendary
+        edge = Image.new("RGBA", im.size, (0, 0, 0, 0))
+        d = ImageDraw.Draw(edge)
+        d.polygon([(0, 0), (220, 0), (0, 160)], fill=(251, 191, 36, 140))
+        d.polygon([(1024, 1024), (804, 1024), (1024, 864)], fill=(245, 158, 11, 120))
+        im = Image.alpha_composite(im, edge)
+        im = tint_overlay(im, (251, 191, 36), 0.06)
     if rarity == "WC":
         # Soft rainbow edge glow
         edge = Image.new("RGBA", im.size, (0, 0, 0, 0))
@@ -122,7 +132,7 @@ def make_variant(variant_id: str, char: str, label: str, rarity: str, kit: str, 
 
 def main() -> None:
     variants = parse_variants()
-    print(f"building {len(variants)} mythic+ variant portraits")
+    print(f"building {len(variants)} legendary+ variant portraits")
     for i, (vid, char, label, rarity, kit) in enumerate(variants):
         out = make_variant(vid, char, label, rarity, kit, i)
         print("wrote", out)

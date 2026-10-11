@@ -30,7 +30,11 @@ const clearedStages = (userId: number) =>
   new Map(all<{ stage_id: string; stars: number }>("SELECT stage_id, stars FROM story_progress WHERE user_id = ?", userId).map((r) => [r.stage_id, r.stars]));
 
 function isUnlocked(stage: StageDef, cleared: Map<string, number>) {
-  return !stage.requires || cleared.has(stage.requires);
+  if (!stage.requires || cleared.has(stage.requires)) return true;
+  // Story expansions insert stages mid-chain; keep progress if a later stage is already cleared.
+  const idx = STAGES.findIndex((s) => s.id === stage.id);
+  if (idx < 0) return false;
+  return cleared.has(stage.id) || STAGES.slice(idx + 1).some((s) => cleared.has(s.id));
 }
 
 route("GET", "/story", {}, ({ user }) => {
@@ -294,8 +298,9 @@ route(
         if (win) {
           const prev = get<{ wins: number }>("SELECT wins FROM league_progress WHERE user_id = ? AND team_id = ?", user.id, foe.id);
           const first = !prev || prev.wins === 0;
-          rewards.gems += Math.round((first ? foe.rewards.gems : T.economy.leagueReplayGems) * mult);
-          rewards.xp += first ? foe.rewards.xp : Math.round(foe.rewards.xp * 0.25);
+          // Replays pay half of that team's first-clear rewards.
+          rewards.gems += Math.round((first ? foe.rewards.gems : foe.rewards.gems * 0.5) * mult);
+          rewards.xp += first ? foe.rewards.xp : Math.round(foe.rewards.xp * 0.5);
           run(
             `INSERT INTO league_progress(user_id, team_id, wins, best_score, cleared_at) VALUES (?,?,1,?,?)
              ON CONFLICT(user_id, team_id) DO UPDATE SET

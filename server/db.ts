@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE TABLE IF NOT EXISTS items (
-  id INTEGER PRIMARY KEY,
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
   owner_id INTEGER NOT NULL REFERENCES users(id),
   kind TEXT NOT NULL CHECK (kind IN ('char','gear')),
   template_id TEXT NOT NULL,
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS item_rolls (
 );
 CREATE TRIGGER IF NOT EXISTS items_record_roll AFTER INSERT ON items
 BEGIN
-  INSERT INTO item_rolls(item_id, template_id, rarity, talent, quality, first_owner, created_at)
+  INSERT OR IGNORE INTO item_rolls(item_id, template_id, rarity, talent, quality, first_owner, created_at)
   VALUES (NEW.id, NEW.template_id, NEW.rarity, NEW.talent, NEW.quality, NEW.owner_id, NEW.created_at);
 END;
 CREATE TRIGGER IF NOT EXISTS item_rolls_no_update BEFORE UPDATE ON item_rolls
@@ -263,6 +263,34 @@ BEGIN
   SELECT RAISE(ABORT, 'item rolls are immutable');
 END;
 `);
+  // item_rolls is append-only, but sold/dismantled items leave orphan roll rows.
+  // Without AUTOINCREMENT, SQLite reuses those ids → UNIQUE collisions on gacha/register.
+  // Bump the items id sequence past every known roll id, and make the insert trigger idempotent.
+  db.exec("DROP TRIGGER IF EXISTS items_record_roll");
+  db.exec(`
+CREATE TRIGGER items_record_roll AFTER INSERT ON items
+BEGIN
+  INSERT OR IGNORE INTO item_rolls(item_id, template_id, rarity, talent, quality, first_owner, created_at)
+  VALUES (NEW.id, NEW.template_id, NEW.rarity, NEW.talent, NEW.quality, NEW.owner_id, NEW.created_at);
+END;
+`);
+  try {
+    const maxRoll = (db.prepare("SELECT COALESCE(MAX(item_id), 0) AS n FROM item_rolls").get() as { n: number }).n;
+    const maxItem = (db.prepare("SELECT COALESCE(MAX(id), 0) AS n FROM items").get() as { n: number }).n;
+    const floor = Math.max(maxRoll, maxItem);
+    // sqlite_sequence only exists once an AUTOINCREMENT table has been written;
+    // force a sequence floor so reused ids cannot collide with orphaned rolls.
+    db.exec("CREATE TABLE IF NOT EXISTS sqlite_sequence(name TEXT PRIMARY KEY, seq INTEGER)");
+    const seq = db.prepare("SELECT seq FROM sqlite_sequence WHERE name = 'items'").get() as { seq: number } | undefined;
+    if (!seq) {
+      db.prepare("INSERT INTO sqlite_sequence(name, seq) VALUES ('items', ?)").run(floor);
+    } else if (seq.seq < floor) {
+      db.prepare("UPDATE sqlite_sequence SET seq = ? WHERE name = 'items'").run(floor);
+    }
+  } catch {
+    // sqlite_sequence is special; if the engine rejects a direct write, createItem still
+    // allocates ids above max(item_rolls) as a belt-and-suspenders fix.
+  }
 })();
 
 /** Runs fn inside a single IMMEDIATE transaction; any throw rolls everything back. */

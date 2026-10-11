@@ -155,7 +155,7 @@ export default function Home() {
       <div className="grid items-start gap-6 lg:grid-cols-[1fr_auto]">
         <div className="grid gap-3 sm:grid-cols-2">
           {[
-            ["Isagi's Path", "Eight stages from the First Selection to the Neo Egoist League, with animated cutscenes."],
+            ["Isagi's Path", "Fourteen stages across five chapters, from the First Selection to the World Path, with animated cutscenes."],
             ["Gacha with permanent rolls", "Players roll Talent; gear rolls Quality. Rolls are permanent."],
             ["Two players, one laptop", "WASD vs arrow keys. No account needed for local play."],
             ["Online lobbies", "Mix friends and bots on either side, or queue for ranked 3v3."],

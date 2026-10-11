@@ -13,7 +13,7 @@ import { api, ApiError } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import type { CharItem, GearItem, Item, Profile } from "@/lib/types";
 import { STAT_KEYS, STAT_LABEL, GEAR_BY_ID, GEAR_SLOT_STATS, type GearSlot } from "@/shared/catalog";
-import { RARITY_INFO, isMythicPlus } from "@/shared/rarity";
+import { RARITY_INFO, isLegendaryPlus } from "@/shared/rarity";
 import { cn } from "@/lib/utils";
 
 const SLOTS: { slot: GearSlot; label: string }[] = [
@@ -143,7 +143,7 @@ export function ItemDetail({
             {item.kind === "char" ? (
               <Portrait
                 id={item.characterId}
-                variantId={isMythicPlus(item.rarity) ? item.templateId : undefined}
+                variantId={isLegendaryPlus(item.rarity) ? item.templateId : undefined}
                 expr="ego"
                 className="h-full w-full"
               />
