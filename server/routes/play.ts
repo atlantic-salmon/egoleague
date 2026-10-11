@@ -5,6 +5,7 @@ import { all, get, run, tx } from "../db";
 import {
   T,
   applyDelta,
+  bestOverall,
   bumpCounter,
   createItem,
   flag,
@@ -408,17 +409,45 @@ route("POST", "/quests/:id/claim", { rate: [20, 10_000], idempotent: true }, ({ 
 
 /* Leaderboard */
 
+const BOARD_COLS: Record<string, string> = {
+  rating: "rating",
+  gems: "gems",
+  level: "level",
+  wins: "wins",
+  stars: "story_stars",
+  goals: "goals",
+};
+
 route("GET", "/leaderboard", { auth: false }, ({ url, user }) => {
   const board = url.searchParams.get("board") ?? "rating";
-  const col = board === "stars" ? "story_stars" : board === "goals" ? "goals" : "rating";
-  const where = board === "rating" ? "WHERE wins + losses + draws > 0" : "";
+
+  if (board === "ovr") {
+    const users = all<{ id: number; username: string; level: number; wins: number; losses: number }>(
+      "SELECT id, username, level, wins, losses FROM users ORDER BY id ASC",
+    );
+    const scored = users
+      .map((u) => ({ ...u, v: bestOverall(u.id) }))
+      .filter((u) => u.v > 0)
+      .sort((a, b) => b.v - a.v || a.id - b.id)
+      .slice(0, 50);
+    let me: { rank: number; v: number } | null = null;
+    if (user) {
+      const v = bestOverall(user.id);
+      const higher = users.map((u) => bestOverall(u.id)).filter((x) => x > v).length;
+      me = { rank: v > 0 ? higher + 1 : 0, v };
+    }
+    return { board, rows: scored.map((r, i) => ({ rank: i + 1, ...r })), me };
+  }
+
+  const col = BOARD_COLS[board] ?? "rating";
+  const where = board === "rating" ? "WHERE wins + losses + draws > 0" : board === "wins" ? "WHERE wins > 0" : "";
   const rows = all<{ id: number; username: string; v: number; level: number; wins: number; losses: number }>(
     `SELECT id, username, ${col} AS v, level, wins, losses FROM users ${where} ORDER BY ${col} DESC, id ASC LIMIT 50`,
   );
   let me: { rank: number; v: number } | null = null;
   if (user) {
     const u = getUser(user.id);
-    const v = (u as unknown as Record<string, number>)[col];
+    const v = (u as unknown as Record<string, number>)[col] ?? 0;
     const rank = get<{ n: number }>(`SELECT COUNT(*) AS n FROM users ${where ? where + " AND" : "WHERE"} ${col} > ?`, v)!.n + 1;
     me = { rank, v };
   }

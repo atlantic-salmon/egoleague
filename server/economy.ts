@@ -20,6 +20,19 @@ function loadTuning(): Tuning {
 }
 export const T = loadTuning();
 
+/** Built-in god account — infinite gems for spends (case-insensitive username). */
+export const GOD_USERNAME = "ego";
+
+export function isGodAccount(u: { username: string }) {
+  return u.username.toLowerCase() === GOD_USERNAME;
+}
+
+export function canAffordGems(u: UserRow, cost: number) {
+  if (cost <= 0) return true;
+  if (isGodAccount(u)) return true;
+  return u.gems >= cost;
+}
+
 export interface UserRow {
   id: number;
   username: string;
@@ -68,11 +81,20 @@ export interface Delta {
   shards?: number;
 }
 
-/** Applies a currency change and writes a ledger row. Must run inside tx(). CHECK constraints reject overdrafts. */
+/** Applies a currency change and writes a ledger row. Must run inside tx(). CHECK constraints reject overdrafts.
+ *  God account (`ego`) never loses gems on spend; gains still credit normally. */
 export function applyDelta(userId: number, d: Delta, kind: string, ref?: string, meta?: unknown, itemId?: number) {
   const c = Math.trunc(d.coins ?? 0);
-  const g = Math.trunc(d.gems ?? 0);
+  let g = Math.trunc(d.gems ?? 0);
   const s = Math.trunc(d.shards ?? 0);
+  let ledgerMeta = meta;
+  if (g < 0) {
+    const u = get<{ username: string }>("SELECT username FROM users WHERE id = ?", userId);
+    if (u && isGodAccount(u)) {
+      ledgerMeta = { ...(typeof meta === "object" && meta && !Array.isArray(meta) ? (meta as object) : { meta }), godFree: -g };
+      g = 0;
+    }
+  }
   if (c || g || s) {
     run("UPDATE users SET coins = coins + ?, gems = gems + ?, shards = shards + ? WHERE id = ?", c, g, s, userId);
   }
@@ -85,7 +107,7 @@ export function applyDelta(userId: number, d: Delta, kind: string, ref?: string,
     s,
     itemId ?? null,
     ref ?? null,
-    meta === undefined ? null : JSON.stringify(meta),
+    ledgerMeta === undefined ? null : JSON.stringify(ledgerMeta),
     Date.now(),
   );
 }
@@ -293,11 +315,13 @@ export function flag(userId: number, reason: string, meta?: unknown) {
 }
 
 export function publicProfile(u: UserRow) {
+  const infiniteGems = isGodAccount(u);
   return {
     id: u.id,
     username: u.username,
     coins: u.coins,
     gems: u.gems,
+    infiniteGems,
     shards: u.shards,
     xp: u.xp,
     xpNext: accountXpForLevel(u.level, T),
@@ -310,4 +334,15 @@ export function publicProfile(u: UserRow) {
     storyStars: u.story_stars,
     earlyBoost: u.level <= T.progression.earlyBoostUntilLevel,
   };
+}
+
+/** Best equipped overall among a user's characters (for leaderboards). */
+export function bestOverall(userId: number) {
+  const chars = all<ItemRow>("SELECT * FROM items WHERE owner_id = ? AND kind = 'char'", userId);
+  let best = 0;
+  for (const it of chars) {
+    const view = itemView(it) as { ovr?: number };
+    if (typeof view.ovr === "number" && view.ovr > best) best = view.ovr;
+  }
+  return best;
 }

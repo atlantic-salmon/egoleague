@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeftRight, Check, Inbox, Send, X } from "lucide-react";
+import { ArrowLeftRight, Check, Gem, Inbox, Send, X } from "lucide-react";
 import { toast } from "sonner";
 import { RequireAuth } from "@/components/auth-card";
 import { PageHeader, Loading, ErrorState, Empty } from "@/components/states";
@@ -30,10 +30,22 @@ interface Trade {
 
 const MAX = 6;
 
-function Side({ title, items }: { title: string; items: (Item | null)[] }) {
+function GemChip({ amount }: { amount: number }) {
+  if (!amount) return null;
+  return (
+    <span className="inline-flex items-center gap-1 rounded-md bg-cyan-500/15 px-2 py-1 text-sm font-semibold text-cyan-200">
+      <Gem className="size-3.5" /> {amount.toLocaleString()} gems
+    </span>
+  );
+}
+
+function Side({ title, items, gems }: { title: string; items: (Item | null)[]; gems: number }) {
   return (
     <div className="min-w-0 flex-1">
       <div className="mb-1 text-xs uppercase tracking-wide text-slate-400">{title}</div>
+      <div className="mb-2">
+        <GemChip amount={gems} />
+      </div>
       <div className="flex flex-wrap gap-2">
         {items.map((it, i) =>
           it ? (
@@ -46,7 +58,7 @@ function Side({ title, items }: { title: string; items: (Item | null)[] }) {
             </div>
           ),
         )}
-        {!items.length && <span className="text-sm text-slate-500">Nothing</span>}
+        {!items.length && !gems && <span className="text-sm text-slate-500">Nothing</span>}
       </div>
     </div>
   );
@@ -62,7 +74,7 @@ function TradeList({ reloadKey }: { reloadKey: number }) {
 
   if (loading && !data) return <Loading />;
   if (error || !data) return <ErrorState message={error ?? "Couldn't load trades"} onRetry={reload} />;
-  if (!data.trades.length) return <Empty title="No trades yet" icon={<Inbox className="size-6 text-slate-500" />}>Propose one above to swap players or gear with a friend.</Empty>;
+  if (!data.trades.length) return <Empty title="No trades yet" icon={<Inbox className="size-6 text-slate-500" />}>Propose one above to swap players, gear or gems with a friend.</Empty>;
 
   const act = async (t: Trade, action: "accept" | "decline") => {
     setBusy(t.id);
@@ -111,9 +123,9 @@ function TradeList({ reloadKey }: { reloadKey: number }) {
               )}
             </div>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
-              <Side title={mine ? "You give" : `${t.from} gives`} items={t.offerItems} />
+              <Side title={mine ? "You give" : `${t.from} gives`} items={t.offerItems} gems={t.offerCoins} />
               <ArrowLeftRight className="mx-auto size-5 shrink-0 text-slate-500" />
-              <Side title={mine ? `${t.to} gives` : "You give"} items={t.requestItems} />
+              <Side title={mine ? `${t.to} gives` : "You give"} items={t.requestItems} gems={t.requestCoins} />
             </div>
           </div>
         );
@@ -133,6 +145,12 @@ function Picker({ items, selected, toggle, empty }: { items: Item[]; selected: n
   );
 }
 
+function parseGems(raw: string) {
+  const n = Number(raw.replace(/[^\d]/g, ""));
+  if (!Number.isFinite(n) || n < 0) return 0;
+  return Math.min(50_000_000, Math.trunc(n));
+}
+
 function Composer({ onSent }: { onSent: () => void }) {
   const { user, setUser } = useSession();
   const mineRes = useApi<{ items: Item[] }>("/collection");
@@ -140,6 +158,8 @@ function Composer({ onSent }: { onSent: () => void }) {
   const [theirs, setTheirs] = useState<{ username: string; items: Item[] } | null>(null);
   const [offer, setOffer] = useState<number[]>([]);
   const [request, setRequest] = useState<number[]>([]);
+  const [offerGems, setOfferGems] = useState("");
+  const [requestGems, setRequestGems] = useState("");
   const [busy, setBusy] = useState(false);
 
   const lookup = async () => {
@@ -149,6 +169,7 @@ function Composer({ onSent }: { onSent: () => void }) {
       if (r.username === user?.username) return toast.error("You can't trade with yourself");
       setTheirs(r);
       setRequest([]);
+      setRequestGems("");
     } catch (e) {
       toast.error(e instanceof ApiError ? e.message : "Player not found");
     }
@@ -157,19 +178,36 @@ function Composer({ onSent }: { onSent: () => void }) {
   const toggle = (list: number[], set: (v: number[]) => void) => (id: number) =>
     set(list.includes(id) ? list.filter((x) => x !== id) : list.length >= MAX ? list : [...list, id]);
 
+  const offerAmt = parseGems(offerGems);
+  const requestAmt = parseGems(requestGems);
+  const canAffordOffer = !!user && (user.infiniteGems || user.gems >= offerAmt);
+  const hasContent = offer.length > 0 || request.length > 0 || offerAmt > 0 || requestAmt > 0;
+
   const send = async () => {
     if (!theirs) return;
+    if (!canAffordOffer) return toast.error("Not enough gems to offer");
     setBusy(true);
     try {
-      await api("/trades", {
-        body: { to: theirs.username, offerItems: offer, requestItems: request },
+      const r = await api<{ user?: Profile }>("/trades", {
+        body: {
+          to: theirs.username,
+          offerItems: offer,
+          requestItems: request,
+          offerCoins: offerAmt,
+          requestCoins: requestAmt,
+        },
         idempotent: true,
       });
-      const me = await api<{ user: Profile }>("/me");
-      setUser(me.user);
+      if (r.user) setUser(r.user);
+      else {
+        const me = await api<{ user: Profile }>("/me");
+        setUser(me.user);
+      }
       toast.success(`Trade sent to ${theirs.username}`);
       setOffer([]);
       setRequest([]);
+      setOfferGems("");
+      setRequestGems("");
       await mineRes.reload();
       onSent();
     } catch (e) {
@@ -202,18 +240,47 @@ function Composer({ onSent }: { onSent: () => void }) {
               <div className="mb-2 text-sm text-slate-300">
                 You give ({offer.length}/{MAX})
               </div>
+              <label className="mb-2 flex items-center gap-2 text-sm text-slate-400">
+                <Gem className="size-3.5 text-cyan-300" />
+                Gems
+                <Input
+                  className="max-w-[9rem]"
+                  inputMode="numeric"
+                  value={offerGems}
+                  onChange={(e) => setOfferGems(e.target.value)}
+                  placeholder="0"
+                  aria-label="Gems you offer"
+                />
+                <span className="text-xs text-slate-500">
+                  You have {user?.infiniteGems ? "∞" : (user?.gems ?? 0).toLocaleString()}
+                </span>
+              </label>
               {mineRes.loading && !mineRes.data ? <Loading /> : <Picker items={myItems} selected={offer} toggle={toggle(offer, setOffer)} empty="No tradeable items" />}
             </div>
             <div>
               <div className="mb-2 text-sm text-slate-300">
                 {theirs.username} gives ({request.length}/{MAX})
               </div>
+              <label className="mb-2 flex items-center gap-2 text-sm text-slate-400">
+                <Gem className="size-3.5 text-cyan-300" />
+                Gems
+                <Input
+                  className="max-w-[9rem]"
+                  inputMode="numeric"
+                  value={requestGems}
+                  onChange={(e) => setRequestGems(e.target.value)}
+                  placeholder="0"
+                  aria-label="Gems you request"
+                />
+              </label>
               <Picker items={theirs.items} selected={request} toggle={toggle(request, setRequest)} empty={`${theirs.username} has nothing tradeable`} />
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-xs text-slate-500">Trades are items only. Offered items stay locked until the trade is accepted, declined or cancelled.</p>
-            <Button disabled={busy || (!offer.length && !request.length)} onClick={send}>
+            <p className="text-xs text-slate-500">
+              Offer items and/or gems. Offered gems are held until the trade is accepted, declined or cancelled.
+            </p>
+            <Button disabled={busy || !hasContent || !canAffordOffer} onClick={send}>
               <Send /> Send offer
             </Button>
           </div>

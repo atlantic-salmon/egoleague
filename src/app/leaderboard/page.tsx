@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { motion } from "motion/react";
-import { Crown, Goal, Star, Trophy } from "lucide-react";
+import { Crown, Flame, Gauge, Gem, Goal, Star, Swords, Trophy } from "lucide-react";
 import { PageHeader, Loading, ErrorState, Empty } from "@/components/states";
 import { Button } from "@/components/ui/button";
 import { useApi } from "@/lib/use-api";
 import { useSession } from "@/lib/session";
 import { cn } from "@/lib/utils";
 
-type Board = "rating" | "stars" | "goals";
+type Board = "rating" | "ovr" | "gems" | "level" | "wins" | "stars" | "goals";
 interface Row {
   rank: number;
   id: number;
@@ -22,6 +22,10 @@ interface Row {
 
 const BOARDS: { id: Board; label: string; icon: typeof Trophy; unit: string }[] = [
   { id: "rating", label: "Ranked rating", icon: Trophy, unit: "rating" },
+  { id: "ovr", label: "Highest OVR", icon: Gauge, unit: "OVR" },
+  { id: "gems", label: "Gems", icon: Gem, unit: "gems" },
+  { id: "level", label: "Account level", icon: Flame, unit: "level" },
+  { id: "wins", label: "Wins", icon: Swords, unit: "wins" },
   { id: "stars", label: "Story stars", icon: Star, unit: "stars" },
   { id: "goals", label: "Total goals", icon: Goal, unit: "goals" },
 ];
@@ -37,13 +41,15 @@ export default function LeaderboardPage() {
   return (
     <div>
       <PageHeader title="Leaderboard" kicker="Who's the world's #1?">
-        {BOARDS.map((x) => (
-          <Button key={x.id} size="sm" variant={board === x.id ? "default" : "outline"} onClick={() => setBoard(x.id)}>
-            <x.icon /> {x.label}
-          </Button>
-        ))}
+        <div className="flex max-w-full flex-wrap gap-2">
+          {BOARDS.map((x) => (
+            <Button key={x.id} size="sm" variant={board === x.id ? "default" : "outline"} onClick={() => setBoard(x.id)}>
+              <x.icon /> {x.label}
+            </Button>
+          ))}
+        </div>
       </PageHeader>
-      {user && data?.me && (
+      {user && data?.me && data.me.rank > 0 && (
         <div className="mb-4 flex items-center gap-3 rounded-xl border border-cyan-400/30 bg-cyan-950/30 px-4 py-3 text-sm">
           <span className="text-slate-300">Your rank</span>
           <span className="font-heading text-2xl text-white">#{data.me.rank}</span>
@@ -92,7 +98,9 @@ export default function LeaderboardPage() {
                       {r.wins}-{r.losses}
                     </td>
                   )}
-                  <td className="px-4 py-2 text-right font-heading text-lg tabular-nums text-white">{r.v.toLocaleString()}</td>
+                  <td className="px-4 py-2 text-right font-heading text-lg tabular-nums text-white">
+                    {board === "gems" && r.username.toLowerCase() === "ego" ? "∞" : r.v.toLocaleString()}
+                  </td>
                 </motion.tr>
               ))}
             </tbody>

@@ -54,7 +54,7 @@
     "storyTempoLate": 1.0
   },
   "economy": {
-    "startingGems": 500,
+    "startingGems": 0,
     "startingCoins": 0,
     "marketListingFeePct": 2,
     "marketListingFeeMin": 5,

@@ -7,6 +7,7 @@ export interface Profile {
   username: string;
   coins: number;
   gems: number;
+  infiniteGems?: boolean;
   shards: number;
   xp: number;
   xpNext: number;

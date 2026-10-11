@@ -40,12 +40,24 @@ export const NAV = [
   { href: "/friends", label: "Friends", icon: UserPlus },
 ];
 
-export function Currency({ icon: Icon, value, className, label }: { icon: typeof Gem; value: number; className?: string; label: string }) {
+export function Currency({
+  icon: Icon,
+  value,
+  className,
+  label,
+  infinite,
+}: {
+  icon: typeof Gem;
+  value: number;
+  className?: string;
+  label: string;
+  infinite?: boolean;
+}) {
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full bg-slate-900/80 px-2 py-0.5 text-xs font-semibold tabular-nums ring-1 ring-white/10", className)} title={label}>
       <Icon className="size-3.5" aria-hidden />
       <span className="sr-only">{label}</span>
-      {value.toLocaleString()}
+      {infinite ? "∞" : value.toLocaleString()}
     </span>
   );
 }
@@ -93,7 +105,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {user ? (
               <>
                 <div className="hidden items-center gap-1.5 sm:flex">
-                  <Currency icon={Gem} value={user.gems} className="text-cyan-300" label="Gems" />
+                  <Currency icon={Gem} value={user.gems} infinite={user.infiniteGems} className="text-cyan-300" label="Gems" />
                 </div>
                 <Link href="/settings" className="hidden items-center gap-1 rounded-md px-2 py-1 text-sm text-slate-300 hover:bg-white/5 md:flex">
                   <span className="font-semibold text-white">{user.username}</span>
@@ -125,7 +137,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="border-t border-white/10 bg-slate-950 xl:hidden">
             <div className="mx-auto grid max-w-7xl grid-cols-2 gap-1 p-3 sm:grid-cols-4">
               <div className="col-span-full mb-1 flex flex-wrap items-center gap-1.5 sm:hidden">
-                <Currency icon={Gem} value={user.gems} className="text-cyan-300" label="Gems" />
+                <Currency icon={Gem} value={user.gems} infinite={user.infiniteGems} className="text-cyan-300" label="Gems" />
               </div>
               {NAV.map((n) => (
                 <Link

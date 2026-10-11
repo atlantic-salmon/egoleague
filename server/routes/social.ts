@@ -1,7 +1,20 @@
 import { z } from "zod";
 import { route, fail } from "../http";
 import { all, get, run, tx, today } from "../db";
-import { T, applyDelta, flag, getUser, itemView, ownedItem, publicProfile, questEvent, removeFromTeams, transferItem, type ItemRow } from "../economy";
+import {
+  T,
+  applyDelta,
+  canAffordGems,
+  flag,
+  getUser,
+  itemView,
+  ownedItem,
+  publicProfile,
+  questEvent,
+  removeFromTeams,
+  transferItem,
+  type ItemRow,
+} from "../economy";
 import { grade as gradeRoll } from "@/shared/stats";
 import { RARITIES, isRarity } from "@/shared/rarity";
 import { onlineUsers, lobbyForUser } from "../rooms";
@@ -120,6 +133,8 @@ route(
         const chars = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char' AND locked_by IS NULL", user.id)!.n;
         if (chars <= 1) fail(400, "Keep at least one player you can play with");
       }
+      const me = getUser(user.id);
+      if (!canAffordGems(me, fee)) fail(400, "Not enough gems for the listing fee");
       applyDelta(user.id, { gems: -fee }, "market_fee", String(it.id), { price: body.price }, it.id);
       const r = run(
         "INSERT INTO listings(seller_id, item_id, price, fee, status, created_at) VALUES (?,?,?,?, 'active', ?)",
@@ -146,7 +161,7 @@ route("POST", "/market/:id/buy", { rate: [20, 10_000], idempotent: true }, ({ us
     if (!l || l.status !== "active") fail(410, "That listing is no longer available");
     if (l!.seller_id === user.id) fail(400, "You can't buy your own listing");
     const buyer = getUser(user.id);
-    if (buyer.gems < l!.price) fail(400, "Not enough gems");
+    if (!canAffordGems(buyer, l!.price)) fail(400, "Not enough gems");
     const it = get<ItemRow>("SELECT * FROM items WHERE id = ?", l!.item_id);
     if (!it || it.owner_id !== l!.seller_id || it.locked_by !== `listing:${l!.id}`) fail(409, "Listing is invalid");
     checkPair(user.id, l!.seller_id);
@@ -191,16 +206,18 @@ route("POST", "/market/:id/cancel", { rate: [20, 10_000] }, ({ user, params }) =
 
 const ids = z.array(z.number().int().positive()).max(6);
 
+const MAX_TRADE_GEMS = 50_000_000;
+
 route(
   "POST",
   "/trades",
   {
     body: z.object({
       to: z.string().trim().min(3).max(16),
-      offerItems: ids,
-      offerCoins: z.number().int().min(0).max(0).optional().default(0),
-      requestItems: ids,
-      requestCoins: z.number().int().min(0).max(0).optional().default(0),
+      offerItems: ids.optional().default([]),
+      offerCoins: z.number().int().min(0).max(MAX_TRADE_GEMS).optional().default(0),
+      requestItems: ids.optional().default([]),
+      requestCoins: z.number().int().min(0).max(MAX_TRADE_GEMS).optional().default(0),
     }),
     rate: [10, 60_000],
     idempotent: true,
@@ -209,11 +226,17 @@ route(
     const to = get<{ id: number }>("SELECT id FROM users WHERE username = ?", body.to);
     if (!to) fail(404, "No player with that username");
     if (to!.id === user.id) fail(400, "You can't trade with yourself");
-    if (!body.offerItems.length && !body.requestItems.length) fail(400, "A trade needs at least one item");
+    const offerGems = body.offerCoins;
+    const requestGems = body.requestCoins;
+    if (!body.offerItems.length && !body.requestItems.length && !offerGems && !requestGems) {
+      fail(400, "A trade needs at least one item or some gems");
+    }
     if (new Set(body.offerItems).size !== body.offerItems.length || new Set(body.requestItems).size !== body.requestItems.length) fail(400, "Duplicate items");
     const pending = get<{ n: number }>("SELECT COUNT(*) AS n FROM trades WHERE from_id = ? AND status = 'pending'", user.id)!.n;
     if (pending >= 10) fail(400, "You have too many pending trades");
     const id = tx(() => {
+      const me = getUser(user.id);
+      if (!canAffordGems(me, offerGems)) fail(400, "Not enough gems to offer");
       for (const iid of body.offerItems) ownedItem(user.id, iid, { unlocked: true });
       for (const iid of body.requestItems) ownedItem(to!.id, iid, { unlocked: true });
       const r = run(
@@ -221,12 +244,13 @@ route(
         user.id,
         to!.id,
         JSON.stringify(body.offerItems),
-        0,
+        offerGems,
         JSON.stringify(body.requestItems),
-        0,
+        requestGems,
         Date.now(),
       );
       const tid = Number(r.lastInsertRowid);
+      if (offerGems) applyDelta(user.id, { gems: -offerGems }, "trade_escrow", `trade:${tid}`, { to: to!.id });
       for (const iid of body.offerItems) {
         run("UPDATE items SET equipped_to = NULL, equip_slot = NULL WHERE equipped_to = ?", iid);
         run("UPDATE items SET locked_by = ?, equipped_to = NULL, equip_slot = NULL WHERE id = ?", `trade:${tid}`, iid);
@@ -234,7 +258,7 @@ route(
       }
       return tid;
     });
-    return { id };
+    return { id, user: publicProfile(getUser(user.id)) };
   },
 );
 
@@ -254,7 +278,7 @@ interface TradeRow {
 function releaseTrade(t: TradeRow, status: "declined" | "cancelled" | "failed") {
   run("UPDATE trades SET status = ?, closed_at = ? WHERE id = ? AND status = 'pending'", status, Date.now(), t.id);
   run("UPDATE items SET locked_by = NULL WHERE locked_by = ?", `trade:${t.id}`);
-  void t.offer_coins;
+  if (t.offer_coins > 0) applyDelta(t.from_id, { gems: t.offer_coins }, "trade_refund", `trade:${t.id}`);
 }
 
 function tradeView(t: TradeRow) {
@@ -291,6 +315,8 @@ route("POST", "/trades/:id/accept", { rate: [10, 10_000], idempotent: true }, ({
     if (t!.status !== "pending") fail(410, "Trade is no longer pending");
     const offer = JSON.parse(t!.offer_items) as number[];
     const request = JSON.parse(t!.request_items) as number[];
+    const me = getUser(user.id);
+    if (!canAffordGems(me, t!.request_coins)) fail(400, "Not enough gems to accept this trade");
     for (const iid of offer) {
       const it = get<ItemRow>("SELECT * FROM items WHERE id = ?", iid);
       if (!it || it.owner_id !== t!.from_id || it.locked_by !== `trade:${t!.id}`) fail(409, "Offered items are no longer available");
@@ -299,11 +325,17 @@ route("POST", "/trades/:id/accept", { rate: [10, 10_000], idempotent: true }, ({
     const isChar = (iid: number) => get<{ kind: string }>("SELECT kind FROM items WHERE id = ?", iid)?.kind === "char";
     const myChars = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char' AND locked_by IS NULL", user.id)!.n;
     if (myChars - request.filter(isChar).length + offer.filter(isChar).length < 1) fail(400, "You'd be left with no players");
+    // Sender's offered chars are locked; unlocked count + requested chars must leave them with ≥1 player.
     const theirChars = get<{ n: number }>("SELECT COUNT(*) AS n FROM items WHERE owner_id = ? AND kind = 'char' AND locked_by IS NULL", t!.from_id)!.n;
     if (theirChars + request.filter(isChar).length < 1) fail(400, "The other player would be left with no players");
     checkPair(t!.from_id, t!.to_id);
     for (const iid of offer) transferItem(iid, t!.from_id, user.id, `trade:${t!.id}`);
     for (const iid of request) transferItem(iid, user.id, t!.from_id, `trade:${t!.id}`);
+    if (t!.offer_coins > 0) applyDelta(user.id, { gems: t!.offer_coins }, "trade_receive", `trade:${t!.id}`);
+    if (t!.request_coins > 0) {
+      applyDelta(user.id, { gems: -t!.request_coins }, "trade_pay", `trade:${t!.id}`);
+      applyDelta(t!.from_id, { gems: t!.request_coins }, "trade_receive", `trade:${t!.id}`);
+    }
     run("UPDATE trades SET status = 'accepted', closed_at = ? WHERE id = ?", Date.now(), t!.id);
   });
   return { ok: true, user: publicProfile(getUser(user.id)) };

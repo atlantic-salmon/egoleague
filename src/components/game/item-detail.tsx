@@ -121,7 +121,7 @@ export function ItemDetail({
   const equip = (slot: GearSlot, gearId: number | null) =>
     act(() => api(`/items/${item.id}/equip`, { body: { slot, gearId } }), gearId ? "Gear equipped" : "Gear removed");
 
-  const canAfford = cost && user ? user.gems >= cost.cost.gems : false;
+  const canAfford = cost && user ? !!user.infiniteGems || user.gems >= cost.cost.gems : false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>

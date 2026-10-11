@@ -374,6 +374,8 @@ function Gacha() {
   };
 
   const gems = user?.gems ?? 0;
+  const infinite = !!user?.infiniteGems;
+  const canPull = (cost: number) => infinite || gems >= cost;
   return (
     <div>
       <PageHeader title="Scout" kicker="Gacha">
@@ -441,14 +443,14 @@ function Gacha() {
               <div className="text-xs text-slate-500">{banner.pity.total} pulls on this banner so far</div>
             </div>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Button size="lg" variant="secondary" disabled={busy || gems < g.pullCost} onClick={() => pull(1)}>
+              <Button size="lg" variant="secondary" disabled={busy || !canPull(g.pullCost)} onClick={() => pull(1)}>
                 <Sparkles /> Pull x1{" "}
                 <span className="ml-1 inline-flex items-center gap-1 opacity-80">
                   <Gem className="size-4" />
                   {g.pullCost}
                 </span>
               </Button>
-              <Button size="lg" disabled={busy || gems < g.tenPullCost} onClick={() => pull(10)} className="shadow-[0_0_30px_-6px_rgba(59,130,246,0.9)]">
+              <Button size="lg" disabled={busy || !canPull(g.tenPullCost)} onClick={() => pull(10)} className="shadow-[0_0_30px_-6px_rgba(59,130,246,0.9)]">
                 <Sparkles /> Pull x10{" "}
                 <span className="ml-1 inline-flex items-center gap-1 opacity-80">
                   <Gem className="size-4" />
@@ -456,7 +458,7 @@ function Gacha() {
                 </span>
               </Button>
             </div>
-            {gems < g.pullCost && <p className="mt-2 text-sm text-amber-300">Out of gems. Clear story stages, finish quests and level up to earn more.</p>}
+            {!canPull(g.pullCost) && <p className="mt-2 text-sm text-amber-300">Out of gems. Clear story stages, finish quests and level up to earn more.</p>}
           </div>
           <div className="relative hidden h-72 w-80 lg:block">
             {banner.kind === "gear" ? (

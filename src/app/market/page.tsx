@@ -171,13 +171,20 @@ function Browse() {
                   <Gem className="size-4" /> {fmt(buying.price)}
                 </span>
               </div>
-              <div className="text-xs text-slate-500">Estimated value {fmt(buying.item.value)} · You have {fmt(user?.gems ?? 0)} gems</div>
+              <div className="text-xs text-slate-500">
+                Estimated value {fmt(buying.item.value)} · You have {user?.infiniteGems ? "∞" : fmt(user?.gems ?? 0)} gems
+              </div>
               <Button
                 size="lg"
-                disabled={busy || buying.sellerId === user?.id || (user?.gems ?? 0) < buying.price}
+                disabled={busy || buying.sellerId === user?.id || (!user?.infiniteGems && (user?.gems ?? 0) < buying.price)}
                 onClick={buy}
               >
-                <ShoppingCart /> {buying.sellerId === user?.id ? "This is your listing" : (user?.gems ?? 0) < buying.price ? "Not enough gems" : "Buy now"}
+                <ShoppingCart />{" "}
+                {buying.sellerId === user?.id
+                  ? "This is your listing"
+                  : !user?.infiniteGems && (user?.gems ?? 0) < buying.price
+                    ? "Not enough gems"
+                    : "Buy now"}
               </Button>
             </>
           )}
@@ -294,7 +301,12 @@ function Sell({ preselect, onListed }: { preselect: number | null; onListed: () 
               </div>
             </div>
             <p className="text-xs text-slate-500">The item is locked and removed from your teams while listed. The fee isn&apos;t refunded if you cancel.</p>
-            <Button className="w-full" size="lg" disabled={busy || p < (e?.minPrice ?? 1) || (user?.gems ?? 0) < fee} onClick={list}>
+            <Button
+              className="w-full"
+              size="lg"
+              disabled={busy || p < (e?.minPrice ?? 1) || (!user?.infiniteGems && (user?.gems ?? 0) < fee)}
+              onClick={list}
+            >
               <Store /> List for {fmt(p)}
             </Button>
           </div>

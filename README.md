@@ -26,7 +26,7 @@ A 2D top-down football game inspired by Blue Lock. Play story mode through the m
   - **Ranked:** a 3v3 queue with Elo rating.
   - **Ghost matches:** play against a friend's saved team, even when they're offline.
 - **Economy (gems only):**
-  - New accounts start with the base 5 players and gems — no coins, no starter gear.
+  - New accounts start with the base 5 players and **0 gems** — earn gems from story, league, quests and level-ups. The account `ego` has infinite gems.
   - Quests, match rewards, market prices, listing fees and level-ups all use gems.
   - Instant sell: sell any unlocked item for 50% of its estimated market value in gems.
   - Market: listing fee and sale tax, with price history.

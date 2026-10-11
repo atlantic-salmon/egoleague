@@ -5,6 +5,7 @@ import { all, get, run, tx } from "../db";
 import {
   T,
   applyDelta,
+  canAffordGems,
   createItem,
   getUser,
   gearFor,
@@ -100,7 +101,7 @@ route(
     const pullId = crypto.randomUUID();
     const items = tx(() => {
       const me = getUser(user.id);
-      if (me.gems < cost) fail(400, "Not enough gems");
+      if (!canAffordGems(me, cost)) fail(400, "Not enough gems");
       applyDelta(user.id, { gems: -cost }, "gacha_pull", pullId, { banner: banner.id, count: body.count });
       run("INSERT OR IGNORE INTO pity(user_id, banner_id) VALUES (?,?)", user.id, banner.id);
       const p = get<{ since_l: number; since_n1: number }>(
@@ -165,7 +166,7 @@ route("POST", "/items/:id/levelup", { rate: [30, 10_000], idempotent: true }, ({
     if (it.level >= levelCap(it.rarity)) fail(400, "Already at max level for this rarity");
     const cost = levelUpCost(it.level, it.rarity, T);
     const me = getUser(user.id);
-    if (me.gems < cost.gems) fail(400, `Need ${cost.gems} gems`);
+    if (!canAffordGems(me, cost.gems)) fail(400, `Need ${cost.gems} gems`);
     applyDelta(user.id, { gems: -cost.gems }, "level_up", String(it.level + 1), null, it.id);
     run("UPDATE items SET level = level + 1 WHERE id = ? AND owner_id = ?", it.id, user.id);
     questEvent(user.id, "levelups", 1);
