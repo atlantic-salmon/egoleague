@@ -1,0 +1,16 @@
+node_modules
+.next
+.git
+.gitignore
+data
+*.db
+*.db-shm
+*.db-wal
+coverage
+.cursor
+.vercel
+npm-debug.log*
+README.md
+AGENTS.md
+**/*.md
+!README.md

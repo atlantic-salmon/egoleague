@@ -10,8 +10,15 @@ import { handleUpgrade } from "./rooms";
 const port = Number(process.env.PORT ?? 4517);
 const hostname = process.env.HOST ?? "0.0.0.0";
 const dev = process.env.NODE_ENV !== "production";
+const dataDir = process.env.DATA_DIR ?? "data";
 
-const app = next({ dev, hostname, port, turbopack: true });
+const app = next({
+  dev,
+  hostname,
+  port,
+  // Turbopack is for local dev; production uses the webpack build from `next build`.
+  turbopack: dev,
+});
 const handle = app.getRequestHandler();
 
 function securityHeaders(res: import("node:http").ServerResponse) {
@@ -45,6 +52,8 @@ app.prepare().then(() => {
     else nextUpgrade(req, socket, head);
   });
   server.listen(port, hostname, () => {
-    console.log(`> Blue Lock: Egoist Pitch ready on http://localhost:${port} (${dev ? "dev" : "production"})`);
+    console.log(
+      `> Blue Lock: Egoist Pitch ready on http://${hostname}:${port} (${dev ? "dev" : "production"}) DATA_DIR=${dataDir}`,
+    );
   });
 });

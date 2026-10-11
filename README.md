@@ -45,7 +45,7 @@ npm run dev
 
 Open http://localhost:4517. The dev server is a single custom Node server that serves the Next.js app, the JSON API at `/api/*`, and the WebSocket game server at `/ws`. To play from another laptop on the same network, open `http://<your-ip>:4517` there.
 
-The database is created automatically at `data/bluelock.db`. Delete that file to reset everything.
+The database is created automatically at `data/bluelock.db` (or `$DATA_DIR/bluelock.db`). Delete that file to reset everything.
 
 | Script | What it does |
 | --- | --- |
@@ -54,6 +54,35 @@ The database is created automatically at `data/bluelock.db`. Delete that file to
 | `npm run typecheck` / `npm run lint` | TypeScript and ESLint |
 | `npm run sim:test` | Checks that the match engine is deterministic (live run equals replay) |
 | `npm run e2e` | Smoke test against a running server: accounts, friends, a lobby match over WebSocket, market buy, escrowed trade |
+
+## Deploy on Railway (keeps saves)
+
+This app is a long-lived Node server (HTTP + WebSockets + SQLite). Railway fits that; Vercel does not.
+
+The repo includes a `Dockerfile` and `railway.toml`. Progress is stored in SQLite — attach a **Volume** so updates do not wipe accounts.
+
+### One-time setup in the Railway dashboard
+
+1. Push this repo to GitHub (or connect the existing remote Railway supports).
+2. Go to [railway.app](https://railway.app) → **New Project** → **Deploy from GitHub repo**.
+3. Select this repository. Railway will build with the Dockerfile.
+4. Open the service → **Variables** and set:
+   - `DATA_DIR` = `/data`
+   - `NODE_ENV` = `production`  
+   (`PORT` and `HOST` are handled automatically.)
+5. Open the service → **Settings** → **Volumes** → **Add Volume**:
+   - Mount path: `/data`
+   - Size: `1 GB` is enough for this game (Free plan max is 0.5 GB).
+6. Open **Settings** → **Networking** → **Generate Domain** (public HTTPS URL).
+7. Redeploy once after the volume is attached.
+
+After that, code deploys keep the same `/data/bluelock.db`, so accounts, gems, collection, story, and pity survive updates.
+
+### Notes
+
+- Free plan is tight (0.5 GB RAM / 0.5 GB volume). If the service OOMs, upgrade to **Hobby ($5/mo)**.
+- Do not delete the volume unless you intend a full wipe.
+- Online lobbies need the process always running — do not enable sleep/scale-to-zero.
 
 ## Controls
 
